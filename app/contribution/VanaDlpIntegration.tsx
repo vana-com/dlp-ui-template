@@ -48,10 +48,12 @@ export function VanaDlpIntegration() {
 
   const handleContribute = async () => {
     if (!session?.user) {
+      console.log("No session user", session);
       return;
     }
 
     if (!userInfo || !driveInfo) {
+      console.log("No userInfo or driveInfo", userInfo, driveInfo);
       return;
     }
 
