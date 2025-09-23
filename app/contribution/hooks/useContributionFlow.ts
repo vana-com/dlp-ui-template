@@ -62,35 +62,60 @@ export function useContributionFlow() {
     driveInfo: DriveInfo,
     isConnected: boolean
   ) => {
+    console.log("🚀 handleContributeData called with:", {
+      userInfo: userInfo ? "present" : "missing",
+      driveInfo: driveInfo ? "present" : "missing",
+      isConnected,
+    });
+
     if (!userInfo) {
+      console.error("❌ No user info provided");
       setError("Unable to access user information. Please try again.");
       return;
     }
 
     try {
+      console.log("🔄 Starting contribution flow...");
       setError(null);
 
       // Execute steps in sequence
+      console.log("📝 Step 0: Executing sign message step...");
       const signature = await executeSignMessageStep();
-      if (!signature) return;
+      if (!signature) {
+        console.error("❌ Sign message step failed");
+        return;
+      }
+      console.log("✅ Sign message step completed");
 
+      console.log("☁️ Step 1: Executing upload data step...");
       const uploadResult = await executeUploadDataStep(
         userInfo,
         signature,
         driveInfo
       );
-      if (!uploadResult) return;
+      if (!uploadResult) {
+        console.error("❌ Upload data step failed");
+        return;
+      }
+      console.log("✅ Upload data step completed:", uploadResult);
 
       if (!isConnected) {
+        console.error("❌ Wallet not connected for blockchain registration");
         setError("Wallet connection required to register on blockchain");
         return;
       }
 
+      console.log("⛓️ Step 2: Executing blockchain registration step...");
       const { fileId, txReceipt, encryptedKey } =
         await executeBlockchainRegistrationStep(uploadResult, signature);
-      if (!fileId) return;
+      if (!fileId) {
+        console.error("❌ Blockchain registration step failed");
+        return;
+      }
+      console.log("✅ Blockchain registration step completed:", { fileId, txReceipt });
 
       // Update contribution data with blockchain information
+      console.log("📊 Updating contribution data with blockchain info...");
       updateContributionData({
         contributionId: uploadResult.vanaFileId,
         encryptedUrl: uploadResult.downloadUrl,
@@ -104,11 +129,13 @@ export function useContributionFlow() {
       });
 
       // Process proof and reward in sequence
+      console.log("🔐 Starting proof and reward steps...");
       await executeProofAndRewardSteps(fileId, encryptedKey, signature);
 
+      console.log("🎉 Contribution flow completed successfully!");
       setIsSuccess(true);
     } catch (error) {
-      console.error("Error contributing data:", error);
+      console.error("💥 Error contributing data:", error);
       setError(
         error instanceof Error
           ? error.message
@@ -120,11 +147,13 @@ export function useContributionFlow() {
   // Step 0: Sign message (pre-step before the visible flow begins)
   const executeSignMessageStep = async (): Promise<string | undefined> => {
     try {
+      console.log("📝 Requesting message signature...", { message: SIGN_MESSAGE });
       // We don't update currentStep here since signing happens before the visible flow
       const signature = await signMessageAsync({ message: SIGN_MESSAGE });
+      console.log("✅ Message signed successfully:", signature ? "signature received" : "no signature");
       return signature;
     } catch (signError) {
-      console.error("Error signing message:", signError);
+      console.error("❌ Error signing message:", signError);
       setError("Failed to sign the message. Please try again.");
       return undefined;
     }
@@ -136,14 +165,26 @@ export function useContributionFlow() {
     signature: string,
     driveInfo: DriveInfo
   ) => {
+    console.log("☁️ Setting current step to UPLOAD_DATA");
     setCurrentStep(STEPS.UPLOAD_DATA);
 
+    console.log("☁️ Calling uploadData with:", {
+      userInfo: userInfo ? "present" : "missing",
+      signature: signature ? "present" : "missing",
+      driveInfo: driveInfo ? "present" : "missing",
+    });
+
     const uploadResult = await uploadData(userInfo, signature, driveInfo);
+    
+    console.log("☁️ Upload result:", uploadResult);
+    
     if (!uploadResult) {
+      console.error("❌ Upload failed - no result returned");
       setError("Failed to upload data to Google Drive");
       return null;
     }
 
+    console.log("☁️ Setting share URL:", uploadResult.downloadUrl);
     setShareUrl(uploadResult.downloadUrl);
     markStepComplete(STEPS.UPLOAD_DATA);
     return uploadResult;
@@ -154,18 +195,32 @@ export function useContributionFlow() {
     uploadResult: UploadResponse,
     signature: string
   ) => {
+    console.log("⛓️ Setting current step to BLOCKCHAIN_REGISTRATION");
     setCurrentStep(STEPS.BLOCKCHAIN_REGISTRATION);
 
+    console.log("⛓️ Getting DLP public key...");
     // Get DLP public key and encrypt the signature
     const publicKey = await getDlpPublicKey();
-    const encryptedKey = await encryptWithWalletPublicKey(signature, publicKey);
+    console.log("⛓️ DLP public key received:", publicKey ? "present" : "missing");
 
+    console.log("🔐 Encrypting signature with wallet public key...");
+    const encryptedKey = await encryptWithWalletPublicKey(signature, publicKey);
+    console.log("🔐 Signature encrypted:", encryptedKey ? "success" : "failed");
+
+    console.log("⛓️ Adding file to blockchain...", {
+      downloadUrl: uploadResult.downloadUrl,
+      encryptedKey: encryptedKey ? "present" : "missing",
+    });
     // Add the file to blockchain
     const txReceipt = await addFile(uploadResult.downloadUrl, encryptedKey);
 
+    console.log("⛓️ Transaction receipt:", txReceipt);
+
     if (!txReceipt) {
+      console.error("❌ Blockchain registration failed");
       // Use the specific contract error if available
       if (contractError) {
+        console.error("❌ Contract error:", contractError);
         setError(`Contract error: ${contractError}`);
       } else {
         setError("Failed to add file to blockchain");
@@ -173,8 +228,11 @@ export function useContributionFlow() {
       return { fileId: null };
     }
 
+    console.log("⛓️ Extracting file ID from receipt...");
     // Extract file ID from transaction receipt
     const fileId = extractFileIdFromReceipt(txReceipt);
+    console.log("⛓️ Extracted file ID:", fileId);
+    
     markStepComplete(STEPS.BLOCKCHAIN_REGISTRATION);
 
     return { fileId, txReceipt, encryptedKey };
@@ -187,20 +245,32 @@ export function useContributionFlow() {
     signature: string
   ) => {
     try {
+      console.log("🔐 Starting TEE proof and reward steps...", {
+        fileId,
+        encryptedKey: encryptedKey ? "present" : "missing",
+        signature: signature ? "present" : "missing",
+      });
+
       // Step 3: Request TEE Proof
+      console.log("🔐 Step 3: Requesting TEE proof...");
       const proofResult = await executeTeeProofStep(
         fileId,
         encryptedKey,
         signature
       );
+      console.log("✅ TEE proof step completed:", proofResult);
 
       // Step 4: Process Proof
+      console.log("🔄 Step 4: Processing proof...");
       await executeProcessProofStep(proofResult, signature);
+      console.log("✅ Process proof step completed");
 
       // Step 5: Claim Reward
+      console.log("💰 Step 5: Claiming reward...");
       await executeClaimRewardStep(fileId);
+      console.log("✅ Claim reward step completed");
     } catch (proofErr) {
-      console.error("Error in TEE/reward process:", proofErr);
+      console.error("💥 Error in TEE/reward process:", proofErr);
       setError(
         proofErr instanceof Error
           ? proofErr.message
@@ -215,13 +285,24 @@ export function useContributionFlow() {
     encryptedKey: string,
     signature: string
   ) => {
+    console.log("🔐 Setting current step to REQUEST_TEE_PROOF");
     setCurrentStep(STEPS.REQUEST_TEE_PROOF);
+    
+    console.log("🔐 Requesting contribution proof...", {
+      fileId,
+      encryptedKey: encryptedKey ? "present" : "missing",
+      signature: signature ? "present" : "missing",
+    });
+    
     const proofResult = await requestContributionProof(
       fileId,
       encryptedKey,
       signature
     );
 
+    console.log("🔐 Proof result received:", proofResult);
+
+    console.log("📊 Updating contribution data with TEE job ID...");
     updateContributionData({
       teeJobId: proofResult.jobId,
     });
@@ -235,8 +316,10 @@ export function useContributionFlow() {
     proofResult: ProofResult,
     signature: string
   ) => {
+    console.log("🔄 Setting current step to PROCESS_PROOF");
     setCurrentStep(STEPS.PROCESS_PROOF);
 
+    console.log("📊 Updating contribution data with proof data...");
     // Update contribution data with proof data
     updateContributionData({
       teeProofData: proofResult.proofData,
@@ -244,28 +327,38 @@ export function useContributionFlow() {
 
     // Call the data refinement process
     try {
-      console.log("Starting data refinement...");
+      console.log("🔄 Starting data refinement...", {
+        file_id: proofResult.fileId,
+        encryption_key: signature ? "present" : "missing",
+      });
+      
       const refinementResult = await refine({
         file_id: proofResult.fileId,
         encryption_key: signature,
       });
 
-      console.log("Data refinement completed:", refinementResult);
+      console.log("✅ Data refinement completed:", refinementResult);
 
       markStepComplete(STEPS.PROCESS_PROOF);
 
       return refinementResult;
     } catch (refineError) {
-      console.error("Error during data refinement:", refineError);
+      console.error("❌ Error during data refinement:", refineError);
       throw refineError;
     }
   };
 
   // Step 5: Claim Reward
   const executeClaimRewardStep = async (fileId: number) => {
+    console.log("💰 Setting current step to CLAIM_REWARD");
     setCurrentStep(STEPS.CLAIM_REWARD);
+    
+    console.log("💰 Requesting reward for file ID:", fileId);
     const rewardResult = await requestReward(fileId);
 
+    console.log("💰 Reward result:", rewardResult);
+
+    console.log("📊 Updating contribution data with reward transaction hash...");
     updateContributionData({
       rewardTxHash: rewardResult?.transactionHash,
     });
@@ -276,10 +369,12 @@ export function useContributionFlow() {
 
   // Helper functions
   const markStepComplete = (step: number) => {
+    console.log(`✅ Marking step ${step} as complete`);
     setCompletedSteps((prev) => [...prev, step]);
   };
 
   const updateContributionData = (newData: Partial<ContributionData>) => {
+    console.log("📊 Updating contribution data:", newData);
     setContributionData((prev) => {
       if (!prev) return newData as ContributionData;
       return { ...prev, ...newData };
