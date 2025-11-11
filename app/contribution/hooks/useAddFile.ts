@@ -25,6 +25,7 @@ export function useAddFile() {
   const [contractError, setContractError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<TransactionReceipt | null>(null);
 
+  // DLP contract address - this is what gets permission to decrypt
   const { address: dataLiquidityPoolAddress } = Controller(
     "DataLiquidityPoolProxy"
   );
@@ -44,6 +45,7 @@ export function useAddFile() {
       const dataRegistry = DataRegistry();
 
       // Send transaction to add file with permissions to DataRegistry
+      // Grant permission to DLP contract address
       const hash = await writeContractAsync({
         address: dataRegistry.address,
         abi: dataRegistry.abi,
@@ -53,7 +55,7 @@ export function useAddFile() {
           address,
           [
             {
-              account: dataLiquidityPoolAddress,
+              account: dataLiquidityPoolAddress,  // Grant to DLP contract address
               key: encryptionKey,
             },
           ],

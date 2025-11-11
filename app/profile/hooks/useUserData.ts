@@ -38,15 +38,9 @@ export function useUserData(): UserDataState {
       setError(null);
 
       try {
-        const [userInfoResponse, driveInfoResponse] = await Promise.all([
-          fetch("/api/google/user-info"),
-          fetch("/api/google/drive-info"),
-        ]);
+        const userInfoResponse = await fetch("/api/google/user-info");
 
-        if (
-          userInfoResponse.status === 401 ||
-          driveInfoResponse.status === 401
-        ) {
+        if (userInfoResponse.status === 401) {
           console.log("Authentication failed, signing out user");
           signOut({ callbackUrl: "/" });
           return;
@@ -59,18 +53,6 @@ export function useUserData(): UserDataState {
           console.error("User info error:", errorData);
           setError("Failed to fetch user information. Please try again later.");
           toast.error("Failed to fetch user information");
-          return;
-        }
-
-        if (!driveInfoResponse.ok) {
-          const errorData = await driveInfoResponse
-            .json()
-            .catch(() => ({ error: "Unknown error" }));
-          console.error("Drive info error:", errorData);
-          setError(
-            "Failed to fetch drive information. Please try again later."
-          );
-          toast.error("Failed to fetch drive information");
           return;
         }
 
@@ -90,9 +72,9 @@ export function useUserData(): UserDataState {
           };
         }
         setUserInfo(finalUserInfo);
-
-        const driveInfoData = await driveInfoResponse.json();
-        setDriveInfo(driveInfoData);
+        
+        // Drive info is no longer needed for Thinker DLP
+        setDriveInfo(null);
       } catch (err: unknown) {
         if (err instanceof Error && err.name !== "AbortError") {
           console.error("Error fetching user data:", err);

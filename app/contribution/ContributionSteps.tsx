@@ -26,8 +26,8 @@ export type StepStatus = "pending" | "current" | "complete" | "error";
 export const contributionSteps: Step[] = [
   {
     id: 1,
-    title: "Encrypt & Upload Data",
-    description: "Encrypting and securely storing your data",
+    title: "Encrypt & Upload Thought",
+    description: "Encrypting and securely storing your thought",
     icon: <LockKeyhole className="h-5 w-5" />,
     statusMessage: "Uploading to Google Drive...",
     signingMessage: "Signing message...",
@@ -35,30 +35,23 @@ export const contributionSteps: Step[] = [
   {
     id: 2,
     title: "Register on Blockchain",
-    description: "Recording encrypted data on the VANA network",
+    description: "Recording encrypted thought on the VANA network",
     icon: <BlocksIcon className="h-5 w-5" />,
     statusMessage: "Adding to blockchain...",
   },
   {
     id: 3,
-    title: "Request Validation",
-    description: "Submitting job to validation nodes",
+    title: "Process with Thinker Task",
+    description: "Submitting to runtime for keyword extraction",
     icon: <Server className="h-5 w-5" />,
-    statusMessage: "Requesting validation from Satya node...",
+    statusMessage: "Processing thought...",
   },
   {
     id: 4,
-    title: "Validate Contribution",
-    description: "Running proof-of-contribution in trusted environment",
-    icon: <Server className="h-5 w-5" />,
-    statusMessage: "Running proof-of-contribution...",
-  },
-  {
-    id: 5,
-    title: "Receive Attestation",
-    description: "Recording validation proof on-chain",
+    title: "Receive Reward",
+    description: "Claiming your contribution reward",
     icon: <Award className="h-5 w-5" />,
-    statusMessage: "Recording proof on-chain...",
+    statusMessage: "Claiming reward...",
   },
 ];
 

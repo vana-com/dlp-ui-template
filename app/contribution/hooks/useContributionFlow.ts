@@ -2,26 +2,23 @@ import { encryptWithWalletPublicKey } from "@/lib/crypto/utils";
 import { UploadResponse } from "@/lib/google/googleService";
 import { useState } from "react";
 import { useSignMessage } from "wagmi";
-import { ContributionData, DriveInfo, UserInfo } from "../types";
+import { ContributionData, UserInfo } from "../types";
 import { extractFileIdFromReceipt } from "../utils/fileUtils";
 import { useAddFile } from "./useAddFile";
-import { useDataRefinement } from "./useDataRefinement";
 import { useDataUpload } from "./useDataUpload";
 import { useRewardClaim } from "./useRewardClaim";
+import { useRuntimeTask } from "./useRuntimeTask";
 import {
   getDlpPublicKey,
-  ProofResult,
   SIGN_MESSAGE,
-  useTeeProof,
 } from "./useTeeProof";
 
 // Steps aligned with ContributionSteps component (1-based indexing)
 const STEPS = {
   UPLOAD_DATA: 1,
   BLOCKCHAIN_REGISTRATION: 2,
-  REQUEST_TEE_PROOF: 3,
-  PROCESS_PROOF: 4,
-  CLAIM_REWARD: 5,
+  PROCESS_RUNTIME_TASK: 3,
+  CLAIM_REWARD: 4,
 };
 
 export function useContributionFlow() {
@@ -34,19 +31,17 @@ export function useContributionFlow() {
   const [shareUrl, setShareUrl] = useState<string>("");
 
   const { signMessageAsync, isPending: isSigningMessage } = useSignMessage();
-  const { uploadData, isUploading } = useDataUpload();
+  const { uploadThought, isUploading } = useDataUpload();
   const { addFile, isAdding, contractError } = useAddFile();
-  const { requestContributionProof, isProcessing } = useTeeProof();
+  const { submitContribution, isProcessing } = useRuntimeTask();
   const { requestReward, isClaiming } = useRewardClaim();
-  const { refine, isLoading: isRefining } = useDataRefinement();
 
   const isLoading =
     isUploading ||
     isAdding ||
     isProcessing ||
     isClaiming ||
-    isSigningMessage ||
-    isRefining;
+    isSigningMessage;
 
   const resetFlow = () => {
     setIsSuccess(false);
@@ -59,18 +54,26 @@ export function useContributionFlow() {
 
   const handleContributeData = async (
     userInfo: UserInfo,
-    driveInfo: DriveInfo,
-    isConnected: boolean
+    thoughtText: string,
+    isConnected: boolean,
+    walletAddress?: string
   ) => {
     console.log("🚀 handleContributeData called with:", {
       userInfo: userInfo ? "present" : "missing",
-      driveInfo: driveInfo ? "present" : "missing",
+      thoughtLength: thoughtText?.length || 0,
       isConnected,
+      walletAddress: walletAddress ? "present" : "missing",
     });
 
     if (!userInfo) {
       console.error("❌ No user info provided");
       setError("Unable to access user information. Please try again.");
+      return;
+    }
+
+    if (!thoughtText || thoughtText.trim().length < 10) {
+      console.error("❌ Invalid thought text");
+      setError("Please enter a valid thought (at least 10 characters).");
       return;
     }
 
@@ -87,17 +90,18 @@ export function useContributionFlow() {
       }
       console.log("✅ Sign message step completed");
 
-      console.log("☁️ Step 1: Executing upload data step...");
-      const uploadResult = await executeUploadDataStep(
+      console.log("☁️ Step 1: Executing upload thought step...");
+      const uploadResult = await executeUploadThoughtStep(
+        thoughtText,
         userInfo,
         signature,
-        driveInfo
+        walletAddress
       );
       if (!uploadResult) {
-        console.error("❌ Upload data step failed");
+        console.error("❌ Upload thought step failed");
         return;
       }
-      console.log("✅ Upload data step completed:", uploadResult);
+      console.log("✅ Upload thought step completed:", uploadResult);
 
       if (!isConnected) {
         console.error("❌ Wallet not connected for blockchain registration");
@@ -128,9 +132,9 @@ export function useContributionFlow() {
         fileId,
       });
 
-      // Process proof and reward in sequence
-      console.log("🔐 Starting proof and reward steps...");
-      await executeProofAndRewardSteps(fileId, encryptedKey, signature);
+      // Process with runtime task and claim reward
+      console.log("🔐 Starting runtime task processing and reward...");
+      await executeRuntimeTaskAndRewardSteps(fileId);
 
       console.log("🎉 Contribution flow completed successfully!");
       setIsSuccess(true);
@@ -159,33 +163,44 @@ export function useContributionFlow() {
     }
   };
 
-  // Step 1: Upload data to Google Drive
-  const executeUploadDataStep = async (
+  // Step 1: Upload thought to Google Drive
+  const executeUploadThoughtStep = async (
+    thoughtText: string,
     userInfo: UserInfo,
     signature: string,
-    driveInfo: DriveInfo
+    walletAddress?: string
   ) => {
     console.log("☁️ Setting current step to UPLOAD_DATA");
     setCurrentStep(STEPS.UPLOAD_DATA);
 
-    console.log("☁️ Calling uploadData with:", {
+    console.log("☁️ Calling uploadThought with:", {
+      thoughtLength: thoughtText.length,
       userInfo: userInfo ? "present" : "missing",
       signature: signature ? "present" : "missing",
-      driveInfo: driveInfo ? "present" : "missing",
+      walletAddress: walletAddress ? "present" : "missing",
     });
 
-    const uploadResult = await uploadData(userInfo, signature, driveInfo);
+    const uploadResult = await uploadThought(thoughtText, userInfo, signature, walletAddress);
     
     console.log("☁️ Upload result:", uploadResult);
     
     if (!uploadResult) {
       console.error("❌ Upload failed - no result returned");
-      setError("Failed to upload data to Google Drive");
+      setError("Failed to upload thought to Google Drive");
       return null;
     }
 
     console.log("☁️ Setting share URL:", uploadResult.downloadUrl);
     setShareUrl(uploadResult.downloadUrl);
+    
+    // Store thought data in contribution data
+    if (uploadResult.thoughtData) {
+      updateContributionData({
+        contributionId: uploadResult.vanaFileId,
+        thoughtData: uploadResult.thoughtData,
+      });
+    }
+    
     markStepComplete(STEPS.UPLOAD_DATA);
     return uploadResult;
   };
@@ -198,18 +213,15 @@ export function useContributionFlow() {
     console.log("⛓️ Setting current step to BLOCKCHAIN_REGISTRATION");
     setCurrentStep(STEPS.BLOCKCHAIN_REGISTRATION);
 
-    console.log("⛓️ Getting DLP public key...");
-    // Get DLP public key and encrypt the signature
-    const publicKey = await getDlpPublicKey();
-    console.log("⛓️ DLP public key received:", publicKey ? "present" : "missing");
-
-    console.log("🔐 Encrypting signature with wallet public key...");
-    const encryptedKey = await encryptWithWalletPublicKey(signature, publicKey);
-    console.log("🔐 Signature encrypted:", encryptedKey ? "success" : "failed");
-
+    console.log("⛓️ Preparing to add file to blockchain...");
+    
+    // TEMPORARY: Store signature directly (no ECIES encryption)
+    // Will be replaced with protocol-governed encryption
+    const encryptedKey = signature;
+    
     console.log("⛓️ Adding file to blockchain...", {
       downloadUrl: uploadResult.downloadUrl,
-      encryptedKey: encryptedKey ? "present" : "missing",
+      encryptedKey: "using simple passphrase mode",
     });
     // Add the file to blockchain
     const txReceipt = await addFile(uploadResult.downloadUrl, encryptedKey);
@@ -238,117 +250,57 @@ export function useContributionFlow() {
     return { fileId, txReceipt, encryptedKey };
   };
 
-  // Steps 3-5: TEE Proof and Reward
-  const executeProofAndRewardSteps = async (
-    fileId: number,
-    encryptedKey: string,
-    signature: string
+  // Steps 3-4: Runtime Task Processing and Reward
+  const executeRuntimeTaskAndRewardSteps = async (
+    fileId: number
   ) => {
     try {
-      console.log("🔐 Starting TEE proof and reward steps...", {
+      console.log("🔐 Starting runtime task and reward steps...", {
         fileId,
-        encryptedKey: encryptedKey ? "present" : "missing",
-        signature: signature ? "present" : "missing",
       });
 
-      // Step 3: Request TEE Proof
-      console.log("🔐 Step 3: Requesting TEE proof...");
-      const proofResult = await executeTeeProofStep(
-        fileId,
-        encryptedKey,
-        signature
-      );
-      console.log("✅ TEE proof step completed:", proofResult);
+      // Step 3: Submit to Runtime Task
+      console.log("🔐 Step 3: Submitting to runtime task...");
+      await executeRuntimeTaskStep(fileId);
+      console.log("✅ Runtime task step completed");
 
-      // Step 4: Process Proof
-      console.log("🔄 Step 4: Processing proof...");
-      await executeProcessProofStep(proofResult, signature);
-      console.log("✅ Process proof step completed");
-
-      // Step 5: Claim Reward
-      console.log("💰 Step 5: Claiming reward...");
+      // Step 4: Claim Reward
+      console.log("💰 Step 4: Claiming reward...");
       await executeClaimRewardStep(fileId);
       console.log("✅ Claim reward step completed");
-    } catch (proofErr) {
-      console.error("💥 Error in TEE/reward process:", proofErr);
+    } catch (err) {
+      console.error("💥 Error in runtime task/reward process:", err);
       setError(
-        proofErr instanceof Error
-          ? proofErr.message
-          : "Failed to process TEE proof or claim reward"
+        err instanceof Error
+          ? err.message
+          : "Failed to process with runtime task or claim reward"
       );
     }
   };
 
-  // Step 3: Request TEE Proof
-  const executeTeeProofStep = async (
-    fileId: number,
-    encryptedKey: string,
-    signature: string
-  ) => {
-    console.log("🔐 Setting current step to REQUEST_TEE_PROOF");
-    setCurrentStep(STEPS.REQUEST_TEE_PROOF);
+  // Step 3: Submit to Runtime Task
+  const executeRuntimeTaskStep = async (fileId: number) => {
+    console.log("🔐 Setting current step to PROCESS_RUNTIME_TASK");
+    setCurrentStep(STEPS.PROCESS_RUNTIME_TASK);
     
-    console.log("🔐 Requesting contribution proof...", {
+    console.log("🔐 Submitting contribution to runtime task...", {
       fileId,
-      encryptedKey: encryptedKey ? "present" : "missing",
-      signature: signature ? "present" : "missing",
     });
     
-    const proofResult = await requestContributionProof(
-      fileId,
-      encryptedKey,
-      signature
-    );
+    const taskResult = await submitContribution(fileId);
 
-    console.log("🔐 Proof result received:", proofResult);
+    console.log("🔐 Runtime task result received:", taskResult);
 
-    console.log("📊 Updating contribution data with TEE job ID...");
+    console.log("📊 Updating contribution data with task result...");
     updateContributionData({
-      teeJobId: proofResult.jobId,
+      teeProofData: taskResult.result,
     });
 
-    markStepComplete(STEPS.REQUEST_TEE_PROOF);
-    return proofResult;
+    markStepComplete(STEPS.PROCESS_RUNTIME_TASK);
+    return taskResult;
   };
 
-  // Step 4: Process Proof
-  const executeProcessProofStep = async (
-    proofResult: ProofResult,
-    signature: string
-  ) => {
-    console.log("🔄 Setting current step to PROCESS_PROOF");
-    setCurrentStep(STEPS.PROCESS_PROOF);
-
-    console.log("📊 Updating contribution data with proof data...");
-    // Update contribution data with proof data
-    updateContributionData({
-      teeProofData: proofResult.proofData,
-    });
-
-    // Call the data refinement process
-    try {
-      console.log("🔄 Starting data refinement...", {
-        file_id: proofResult.fileId,
-        encryption_key: signature ? "present" : "missing",
-      });
-      
-      const refinementResult = await refine({
-        file_id: proofResult.fileId,
-        encryption_key: signature,
-      });
-
-      console.log("✅ Data refinement completed:", refinementResult);
-
-      markStepComplete(STEPS.PROCESS_PROOF);
-
-      return refinementResult;
-    } catch (refineError) {
-      console.error("❌ Error during data refinement:", refineError);
-      throw refineError;
-    }
-  };
-
-  // Step 5: Claim Reward
+  // Step 4: Claim Reward
   const executeClaimRewardStep = async (fileId: number) => {
     console.log("💰 Setting current step to CLAIM_REWARD");
     setCurrentStep(STEPS.CLAIM_REWARD);

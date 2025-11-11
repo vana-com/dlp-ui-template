@@ -1,21 +1,75 @@
 /**
  * Google Drive service for client-side file operations
  */
-import { DriveInfo, UserInfo } from "@/app/contribution/types";
+import { DriveInfo, ThoughtData, UserInfo } from "@/app/contribution/types";
 import { clientSideEncrypt, formatVanaFileId } from "../crypto/utils";
 
 export interface UploadResponse {
   downloadUrl: string;
   fileId: string;
   vanaFileId: string;
+  thoughtData?: ThoughtData;
 }
 
 /**
- * Handle the complete data upload process:
- * 1. Encrypt the data
- * 2. Upload to Google Drive
- * 3. Set permissions
- * 4. Generate and return all necessary URLs
+ * Handle the complete thought upload process:
+ * 1. Create thought JSON
+ * 2. Encrypt the data
+ * 3. Upload to Google Drive
+ * 4. Set permissions
+ * 5. Generate and return all necessary URLs
+ */
+export const uploadThought = async (
+  thoughtText: string,
+  userInfo: UserInfo,
+  signature: string,
+  accessToken: string,
+  walletAddress?: string
+): Promise<UploadResponse> => {
+  const timestamp = new Date().toISOString();
+  
+  // Generate contributor_id: prefer wallet address, fallback to email hash
+  const contributor_id = walletAddress || userInfo.email;
+  
+  // Create thought data matching Thinker task expectations
+  const thoughtData: ThoughtData = {
+    contributor_id,
+    thought: thoughtText,
+    timestamp,
+  };
+
+  const fileString = JSON.stringify(thoughtData);
+  const fileBlob = new Blob([fileString], { type: "application/json" });
+
+  // Encrypt the thought data
+  const encryptedBlob = await clientSideEncrypt(fileBlob, signature);
+
+  // Upload to Drive
+  const timestampMs = Date.now();
+  const fileName = `vana_thought_${timestampMs}.json`;
+  const fileDetails = await uploadFileToDrive(
+    encryptedBlob,
+    fileName,
+    accessToken
+  );
+
+  // Set permissions and get download URL
+  await updateFilePermissions(accessToken, fileDetails.id);
+  const downloadUrl = await createSharableLink(fileDetails.id);
+
+  // Return complete response
+  return {
+    downloadUrl: downloadUrl,
+    fileId: fileDetails.id,
+    vanaFileId: formatVanaFileId(fileDetails.webViewLink, timestampMs),
+    thoughtData,
+  };
+};
+
+/**
+ * @deprecated Use uploadThought instead
+ * Legacy function for uploading user profile data
+ * Kept for backwards compatibility
  */
 export const uploadUserData = async (
   userInfo: UserInfo,

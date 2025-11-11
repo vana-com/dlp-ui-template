@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, CheckCircle } from "lucide-react";
 import { VanaDlpIntegration } from "../contribution/VanaDlpIntegration";
 import { useUserData } from "./hooks/useUserData";
 
@@ -69,45 +69,15 @@ export function UserProfile() {
         </CardHeader>
 
         <CardContent className="pt-6 space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold mb-2">Google Drive Storage</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Used:</span>
-                <span className="font-medium">
-                  {driveInfo?.usedStorageBytes}
-                </span>
-              </div>
-              <div className="h-2 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-blue-500 rounded-full"
-                  style={{ width: `${driveInfo?.percentUsed || 0}%` }}
-                ></div>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Total:</span>
-                <span className="font-medium">
-                  {driveInfo?.totalStorageBytes}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-sm font-semibold mb-2">Account Information</h3>
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between">
-                <span>Google ID:</span>
-                <span className="font-mono text-xs truncate max-w-[200px]">
-                  {userInfo?.id}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>Locale:</span>
-                <span className="font-medium">
-                  {userInfo?.locale || "Not available"}
-                </span>
-              </div>
+          <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950 rounded-md">
+            <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                Google Drive Connected
+              </p>
+              <p className="text-xs text-green-700 dark:text-green-300">
+                Your encrypted thoughts will be stored securely in your Drive
+              </p>
             </div>
           </div>
         </CardContent>
