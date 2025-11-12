@@ -1,17 +1,8 @@
-import { encryptWithWalletPublicKey } from "@/lib/crypto/utils";
-import { UploadResponse } from "@/lib/google/googleService";
 import { useState } from "react";
-import { useSignMessage } from "wagmi";
 import { ContributionData, UserInfo } from "../types";
-import { extractFileIdFromReceipt } from "../utils/fileUtils";
-import { useAddFile } from "./useAddFile";
-import { useDataUpload } from "./useDataUpload";
+import { useDataUpload, UploadResponse } from "./useDataUpload";
 import { useRewardClaim } from "./useRewardClaim";
 import { useRuntimeTask } from "./useRuntimeTask";
-import {
-  getDlpPublicKey,
-  SIGN_MESSAGE,
-} from "./useTeeProof";
 
 // Steps aligned with ContributionSteps component (1-based indexing)
 const STEPS = {
@@ -30,18 +21,14 @@ export function useContributionFlow() {
     useState<ContributionData | null>(null);
   const [shareUrl, setShareUrl] = useState<string>("");
 
-  const { signMessageAsync, isPending: isSigningMessage } = useSignMessage();
   const { uploadThought, isUploading } = useDataUpload();
-  const { addFile, isAdding, contractError } = useAddFile();
   const { submitContribution, isProcessing } = useRuntimeTask();
   const { requestReward, isClaiming } = useRewardClaim();
 
   const isLoading =
     isUploading ||
-    isAdding ||
     isProcessing ||
-    isClaiming ||
-    isSigningMessage;
+    isClaiming;
 
   const resetFlow = () => {
     setIsSuccess(false);
@@ -82,19 +69,10 @@ export function useContributionFlow() {
       setError(null);
 
       // Execute steps in sequence
-      console.log("📝 Step 0: Executing sign message step...");
-      const signature = await executeSignMessageStep();
-      if (!signature) {
-        console.error("❌ Sign message step failed");
-        return;
-      }
-      console.log("✅ Sign message step completed");
-
       console.log("☁️ Step 1: Executing upload thought step...");
       const uploadResult = await executeUploadThoughtStep(
         thoughtText,
         userInfo,
-        signature,
         walletAddress
       );
       if (!uploadResult) {
@@ -103,38 +81,9 @@ export function useContributionFlow() {
       }
       console.log("✅ Upload thought step completed:", uploadResult);
 
-      if (!isConnected) {
-        console.error("❌ Wallet not connected for blockchain registration");
-        setError("Wallet connection required to register on blockchain");
-        return;
-      }
-
-      console.log("⛓️ Step 2: Executing blockchain registration step...");
-      const { fileId, txReceipt, encryptedKey } =
-        await executeBlockchainRegistrationStep(uploadResult, signature);
-      if (!fileId) {
-        console.error("❌ Blockchain registration step failed");
-        return;
-      }
-      console.log("✅ Blockchain registration step completed:", { fileId, txReceipt });
-
-      // Update contribution data with blockchain information
-      console.log("📊 Updating contribution data with blockchain info...");
-      updateContributionData({
-        contributionId: uploadResult.vanaFileId,
-        encryptedUrl: uploadResult.downloadUrl,
-        transactionReceipt: {
-          hash: txReceipt.transactionHash,
-          blockNumber: txReceipt.blockNumber
-            ? Number(txReceipt.blockNumber)
-            : undefined,
-        },
-        fileId,
-      });
-
       // Process with runtime task and claim reward
       console.log("🔐 Starting runtime task processing and reward...");
-      await executeRuntimeTaskAndRewardSteps(fileId);
+      await executeRuntimeTaskAndRewardSteps(uploadResult.fileId);
 
       console.log("🎉 Contribution flow completed successfully!");
       setIsSuccess(true);
@@ -148,26 +97,10 @@ export function useContributionFlow() {
     }
   };
 
-  // Step 0: Sign message (pre-step before the visible flow begins)
-  const executeSignMessageStep = async (): Promise<string | undefined> => {
-    try {
-      console.log("📝 Requesting message signature...", { message: SIGN_MESSAGE });
-      // We don't update currentStep here since signing happens before the visible flow
-      const signature = await signMessageAsync({ message: SIGN_MESSAGE });
-      console.log("✅ Message signed successfully:", signature ? "signature received" : "no signature");
-      return signature;
-    } catch (signError) {
-      console.error("❌ Error signing message:", signError);
-      setError("Failed to sign the message. Please try again.");
-      return undefined;
-    }
-  };
-
   // Step 1: Upload thought to Google Drive
   const executeUploadThoughtStep = async (
     thoughtText: string,
     userInfo: UserInfo,
-    signature: string,
     walletAddress?: string
   ) => {
     console.log("☁️ Setting current step to UPLOAD_DATA");
@@ -176,11 +109,10 @@ export function useContributionFlow() {
     console.log("☁️ Calling uploadThought with:", {
       thoughtLength: thoughtText.length,
       userInfo: userInfo ? "present" : "missing",
-      signature: signature ? "present" : "missing",
       walletAddress: walletAddress ? "present" : "missing",
     });
 
-    const uploadResult = await uploadThought(thoughtText, userInfo, signature, walletAddress);
+    const uploadResult = await uploadThought(thoughtText, userInfo, walletAddress);
     
     console.log("☁️ Upload result:", uploadResult);
     
@@ -190,64 +122,26 @@ export function useContributionFlow() {
       return null;
     }
 
-    console.log("☁️ Setting share URL:", uploadResult.downloadUrl);
-    setShareUrl(uploadResult.downloadUrl);
-    
-    // Store thought data in contribution data
-    if (uploadResult.thoughtData) {
-      updateContributionData({
-        contributionId: uploadResult.vanaFileId,
-        thoughtData: uploadResult.thoughtData,
-      });
-    }
-    
-    markStepComplete(STEPS.UPLOAD_DATA);
-    return uploadResult;
-  };
+    console.log("☁️ Setting share URL:", uploadResult.url);
+    setShareUrl(uploadResult.url);
 
-  // Step 2: Register on blockchain
-  const executeBlockchainRegistrationStep = async (
-    uploadResult: UploadResponse,
-    signature: string
-  ) => {
-    console.log("⛓️ Setting current step to BLOCKCHAIN_REGISTRATION");
-    setCurrentStep(STEPS.BLOCKCHAIN_REGISTRATION);
-
-    console.log("⛓️ Preparing to add file to blockchain...");
-    
-    // TEMPORARY: Store signature directly (no ECIES encryption)
-    // Will be replaced with protocol-governed encryption
-    const encryptedKey = signature;
-    
-    console.log("⛓️ Adding file to blockchain...", {
-      downloadUrl: uploadResult.downloadUrl,
-      encryptedKey: "using simple passphrase mode",
+    // Update contribution data with upload + blockchain results from SDK
+    console.log("📊 Updating contribution data with upload info...");
+    updateContributionData({
+      contributionId: uploadResult.fileId.toString(),
+      encryptedUrl: uploadResult.url,
+      transactionReceipt: {
+        hash: uploadResult.transactionHash,
+      },
+      fileId: uploadResult.fileId,
+      thoughtData: uploadResult.thoughtData,
     });
-    // Add the file to blockchain
-    const txReceipt = await addFile(uploadResult.downloadUrl, encryptedKey);
 
-    console.log("⛓️ Transaction receipt:", txReceipt);
-
-    if (!txReceipt) {
-      console.error("❌ Blockchain registration failed");
-      // Use the specific contract error if available
-      if (contractError) {
-        console.error("❌ Contract error:", contractError);
-        setError(`Contract error: ${contractError}`);
-      } else {
-        setError("Failed to add file to blockchain");
-      }
-      return { fileId: null };
-    }
-
-    console.log("⛓️ Extracting file ID from receipt...");
-    // Extract file ID from transaction receipt
-    const fileId = extractFileIdFromReceipt(txReceipt);
-    console.log("⛓️ Extracted file ID:", fileId);
-    
+    markStepComplete(STEPS.UPLOAD_DATA);
+    setCurrentStep(STEPS.BLOCKCHAIN_REGISTRATION);
     markStepComplete(STEPS.BLOCKCHAIN_REGISTRATION);
 
-    return { fileId, txReceipt, encryptedKey };
+    return uploadResult;
   };
 
   // Steps 3-4: Runtime Task Processing and Reward
@@ -341,7 +235,6 @@ export function useContributionFlow() {
     contributionData,
     shareUrl,
     isLoading,
-    isSigningMessage,
     handleContributeData,
     resetFlow,
   };

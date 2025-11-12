@@ -1,71 +1,70 @@
 import { useState } from "react";
-import { uploadUserData, uploadThought as uploadThoughtService, UploadResponse } from "@/lib/google/googleService";
-import { useSession } from "next-auth/react";
-import { DriveInfo, UserInfo } from "../types";
+import type { Address, Hash } from "viem";
+import { useVanaSdk } from "./useVanaSdk";
+import { fetchPgePublicKey, derivePgeAddress } from "@/lib/pge/client";
+import { ThoughtData, UserInfo } from "../types";
+
+export interface UploadResponse {
+  fileId: number;
+  url: string;
+  transactionHash: Hash;
+  thoughtData: ThoughtData;
+}
 
 /**
- * Hook for uploading and encrypting data/thoughts
+ * Hook for uploading and encrypting data/thoughts using the Vana SDK.
  */
 export function useDataUpload() {
   const [isUploading, setIsUploading] = useState(false);
-  const { data: session } = useSession();
+  const vana = useVanaSdk();
 
-  /**
-   * Upload thought to Google Drive
-   */
   const uploadThought = async (
     thoughtText: string,
     userInfo: UserInfo,
-    signature: string,
     walletAddress?: string
   ): Promise<UploadResponse | null> => {
     setIsUploading(true);
 
     try {
-      if (!session?.accessToken) {
-        throw new Error("No access token available");
+      if (!vana) {
+        throw new Error("Vana SDK is not initialized");
       }
 
-      // Use the Google Service to handle the entire upload process
-      const result = await uploadThoughtService(
-        thoughtText,
-        userInfo,
-        signature,
-        session.accessToken as string,
-        walletAddress
-      );
+      const timestamp = new Date().toISOString();
+      const contributorId = walletAddress || userInfo.email;
 
-      return result;
-    } finally {
-      setIsUploading(false);
-    }
-  };
+      const thoughtData: ThoughtData = {
+        contributor_id: contributorId,
+        thought: thoughtText,
+        timestamp,
+      };
 
-  /**
-   * @deprecated Use uploadThought instead
-   * Upload data to Google Drive (legacy)
-   */
-  const uploadData = async (
-    userInfo: UserInfo,
-    signature: string,
-    driveInfo?: DriveInfo
-  ): Promise<UploadResponse | null> => {
-    setIsUploading(true);
+      const serializedContent = JSON.stringify(thoughtData);
 
-    try {
-      if (!session?.accessToken) {
-        throw new Error("No access token available");
-      }
+      const pgePublicKey = await fetchPgePublicKey();
+      const formattedPublicKey = pgePublicKey.startsWith("0x")
+        ? pgePublicKey
+        : `0x${pgePublicKey}`;
+      const pgeAddress = derivePgeAddress(formattedPublicKey) as Address;
 
-      // Use the Google Service to handle the entire upload process
-      const result = await uploadUserData(
-        userInfo,
-        signature,
-        session.accessToken as string,
-        driveInfo
-      );
+      const result = await vana.data.upload({
+        content: serializedContent,
+        filename: `vana_thought_${Date.now()}.json`,
+        providerName: "googledrive",
+        permissions: [
+          {
+            account: pgeAddress,
+            publicKey: formattedPublicKey,
+          },
+        ],
+      });
 
-      return result;
+      return {
+        fileId: result.fileId,
+        url: result.url,
+        transactionHash: result.transactionHash,
+        thoughtData,
+      };
     } finally {
       setIsUploading(false);
     }
@@ -73,7 +72,6 @@ export function useDataUpload() {
 
   return {
     uploadThought,
-    uploadData, // Keep for backwards compatibility
     isUploading,
   };
 }
