@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ContributionData, UserInfo } from "../types";
-import { useDataUpload, UploadResponse } from "./useDataUpload";
+import { useDataUpload } from "./useDataUpload";
 import { useRewardClaim } from "./useRewardClaim";
 import { useRuntimeTask } from "./useRuntimeTask";
 

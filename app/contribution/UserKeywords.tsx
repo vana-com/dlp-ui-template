@@ -22,7 +22,7 @@ interface KeywordData {
 }
 
 export function UserKeywords({ contributorId, autoLoad = false }: UserKeywordsProps) {
-  const { queryUserKeywords, aggregateKeywords, isProcessing } = useRuntimeTask();
+  const { queryUserKeywords, aggregateKeywords } = useRuntimeTask();
   const [keywords, setKeywords] = useState<KeywordData[]>([]);
   const [totalContributions, setTotalContributions] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);

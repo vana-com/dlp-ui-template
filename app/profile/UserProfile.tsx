@@ -16,7 +16,7 @@ import { VanaDlpIntegration } from "../contribution/VanaDlpIntegration";
 import { useUserData } from "./hooks/useUserData";
 
 export function UserProfile() {
-  const { userInfo, driveInfo, isLoading, error } = useUserData();
+  const { userInfo, isLoading, error } = useUserData();
 
   if (isLoading) {
     return <ProfileSkeleton />;
