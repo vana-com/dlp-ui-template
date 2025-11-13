@@ -92,7 +92,7 @@ export function ThoughtInput({
               className="block w-full text-left text-xs p-2 bg-white dark:bg-gray-800 rounded border border-blue-200 dark:border-blue-800 hover:border-blue-400 dark:hover:border-blue-600 transition-colors"
               disabled={disabled}
             >
-              "{example}"
+              &ldquo;{example}&rdquo;
             </button>
           ))}
         </div>

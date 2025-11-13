@@ -24,10 +24,10 @@ export function ContributionSummary({
         {isEncrypted ? "Contributed Thought Summary:" : "Thought to be contributed:"}
       </h3>
       
-      {thoughtPreview && (
+      {thoughtPreview && thoughtText && (
         <div className="mb-3 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
           <p className="text-xs text-gray-700 dark:text-gray-300 italic">
-            "{thoughtPreview}"
+            &ldquo;{thoughtPreview}&rdquo;
           </p>
           <p className="text-xs text-gray-500 mt-1">
             {thoughtText.length} characters

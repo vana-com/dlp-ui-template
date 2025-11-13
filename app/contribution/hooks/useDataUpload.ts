@@ -53,10 +53,16 @@ export function useDataUpload() {
         throw new Error("NEXT_PUBLIC_PGE_ADDRESS not configured");
       }
 
+      const schemaId = process.env.NEXT_PUBLIC_SCHEMA_ID
+        ? parseInt(process.env.NEXT_PUBLIC_SCHEMA_ID, 10)
+        : undefined;
+
       const result = await vana.data.upload({
         content: serializedContent,
         filename: `vana_thought_${Date.now()}.json`,
         providerName: "googledrive",
+        schemaId,
+        schemaValidation: "warn",
         permissions: [
           {
             account: pgeAddress,
