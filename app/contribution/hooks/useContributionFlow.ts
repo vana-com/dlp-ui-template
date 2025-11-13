@@ -1,3 +1,14 @@
+/**
+ * TODO-TEMP-REMOVE: TEMPORARY WORKAROUND FOR Q4 DEMO
+ * 
+ * This file includes a call to `/api/dataset/add-pending-file` which uses
+ * the DLP owner's private key on the backend to add files to the dataset's
+ * pending list.
+ * 
+ * Search for "TODO-TEMP-REMOVE" to find all locations to clean up.
+ * See TEMPORARY_WORKAROUNDS.md for complete removal instructions.
+ */
+
 import { useState } from "react";
 import { ContributionData, UserInfo } from "../types";
 import { useDataUpload, UploadResponse } from "./useDataUpload";
@@ -20,6 +31,7 @@ export function useContributionFlow() {
   const [contributionData, setContributionData] =
     useState<ContributionData | null>(null);
   const [shareUrl, setShareUrl] = useState<string>("");
+  const [isAddingToPendingList, setIsAddingToPendingList] = useState(false); // Track pending list addition
 
   const { uploadThought, isUploading } = useDataUpload();
   const { submitContribution, isProcessing } = useRuntimeTask();
@@ -27,6 +39,7 @@ export function useContributionFlow() {
 
   const isLoading =
     isUploading ||
+    isAddingToPendingList ||
     isProcessing ||
     isClaiming;
 
@@ -153,8 +166,15 @@ export function useContributionFlow() {
         fileId,
       });
 
+      // TODO-TEMP-REMOVE: Add file to dataset pending list via backend
+      console.log("📝 Step 2.5: Adding file to dataset pending list (TEMP WORKAROUND)...");
+      console.log("⏳ Processing... (adding to pending list)");
+      await addFileToPendingList(fileId);
+      console.log("✅ File added to dataset pending list");
+
       // Step 3: Submit to Runtime Task
       console.log("🔐 Step 3: Submitting to runtime task...");
+      console.log("⏳ Processing... (submitting to runtime)");
       await executeRuntimeTaskStep(fileId);
       console.log("✅ Runtime task step completed");
 
@@ -169,6 +189,46 @@ export function useContributionFlow() {
           ? err.message
           : "Failed to process with runtime task or claim reward"
       );
+    }
+  };
+
+  // TODO-TEMP-REMOVE: Backend workaround for DatasetRegistry.addPendingFile()
+  // This function calls a backend API that uses the DLP owner's private key.
+  // Delete this entire function and the call above when contracts are upgraded.
+  const addFileToPendingList = async (fileId: number) => {
+    console.log("📝 Calling backend to add file to dataset pending list...");
+    console.log("⚠️ WARNING: This is a temporary workaround using backend private key");
+    
+    setIsAddingToPendingList(true); // Set loading state
+    try {
+      const response = await fetch("/api/dataset/add-pending-file", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ fileId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          `Failed to add file to pending list: ${errorData.error || errorData.details || response.statusText}`
+        );
+      }
+
+      const result = await response.json();
+      console.log("✅ File added to pending list:", result);
+      
+      if (result.warning) {
+        console.warn(result.warning);
+      }
+      
+      return result;
+    } catch (error) {
+      console.error("❌ Error adding file to pending list:", error);
+      throw error;
+    } finally {
+      setIsAddingToPendingList(false); // Clear loading state
     }
   };
 

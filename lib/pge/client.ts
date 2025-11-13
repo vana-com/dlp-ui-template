@@ -13,7 +13,7 @@ import { BrowserECIESProvider } from "@opendatalabs/vana-sdk/browser";
  */
 
 const PGE_URL = process.env.NEXT_PUBLIC_PGE_URL || 
-  "https://0d0aca59b5738005d8ac748f4150e0854a43b3d5-8000.dstack-prod7.phala.network";
+  "https://5d2f3c508220a6a0fdd07eb770eac06c319e758a-8000.dstack-pha-prod7.phala.network";
 
 // Cache for PGE public key (can be refreshed)
 let cachedPublicKey: string | null = null;
@@ -41,7 +41,9 @@ export async function fetchPgePublicKey(): Promise<string> {
   }
 
   try {
-    const response = await fetch(`${PGE_URL}/v1/public-key`);
+    // Use proxy API route to avoid CORS issues until PGE is rebuilt
+    // TODO: Switch to direct PGE call once CORS is deployed: fetch(`${PGE_URL}/v1/public-key`)
+    const response = await fetch(`/api/pge/public-key`);
     
     if (!response.ok) {
       throw new Error(`Failed to fetch PGE public key: ${response.status} ${response.statusText}`);

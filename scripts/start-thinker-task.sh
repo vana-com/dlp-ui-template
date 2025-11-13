@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 # Configuration
 RUNTIME_URL="http://localhost:8000"
 TASK_ID=999
-DATASET_ID=100
+DATASET_ID=1
 DLP_ID=186
 
 echo ""

@@ -45,7 +45,13 @@ export function useDataUpload() {
       const formattedPublicKey = pgePublicKey.startsWith("0x")
         ? pgePublicKey
         : `0x${pgePublicKey}`;
-      const pgeAddress = derivePgeAddress(formattedPublicKey) as Address;
+      
+      // Use fixed PGE address from environment (not derived from public key)
+      const pgeAddress = process.env.NEXT_PUBLIC_PGE_ADDRESS as Address;
+      
+      if (!pgeAddress) {
+        throw new Error("NEXT_PUBLIC_PGE_ADDRESS not configured");
+      }
 
       const result = await vana.data.upload({
         content: serializedContent,

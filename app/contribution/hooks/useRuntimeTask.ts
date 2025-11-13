@@ -7,6 +7,7 @@ import { useState } from "react";
 
 const RUNTIME_URL = process.env.NEXT_PUBLIC_DLP_RUNTIME_URL || "http://localhost:8000";
 const TASK_ID = process.env.NEXT_PUBLIC_TASK_ID || "999";
+const DATASET_ID = process.env.NEXT_PUBLIC_DATASET_ID || "1";
 
 export interface RuntimeTaskResult {
   operation_id: string;
@@ -29,7 +30,9 @@ export const useRuntimeTask = () => {
 
   /**
    * Submit a contribution to the runtime task
-   * Calls POST /v1/tasks/{task_id}/invoke/contribute?file_id={file_id}
+   * Calls POST /v1/tasks/{task_id}/invoke/contribute?file_id={file_id}&dataset_id={dataset_id}
+   * 
+   * Note: Requires dataset_id for Data Access V1 dual registry model
    */
   const submitContribution = async (
     fileId: number
@@ -38,9 +41,9 @@ export const useRuntimeTask = () => {
     setError(null);
 
     try {
-      console.log(`📡 Submitting contribution to runtime task: file_id=${fileId}`);
+      console.log(`📡 Submitting contribution to runtime task: file_id=${fileId}, dataset_id=${DATASET_ID}`);
 
-      const url = `${RUNTIME_URL}/v1/tasks/${TASK_ID}/invoke/contribute?file_id=${fileId}`;
+      const url = `${RUNTIME_URL}/v1/tasks/${TASK_ID}/invoke/contribute?file_id=${fileId}&dataset_id=${DATASET_ID}`;
       console.log(`POST ${url}`);
 
       const response = await fetch(url, {
