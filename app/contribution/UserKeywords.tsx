@@ -21,6 +21,11 @@ interface KeywordData {
   }>;
 }
 
+interface QueryKeywordsResult {
+  keywords?: KeywordData[];
+  total_contributions?: number;
+}
+
 export function UserKeywords({ contributorId, autoLoad = false }: UserKeywordsProps) {
   const { queryUserKeywords, aggregateKeywords } = useRuntimeTask();
   const [keywords, setKeywords] = useState<KeywordData[]>([]);
@@ -44,9 +49,10 @@ export function UserKeywords({ contributorId, autoLoad = false }: UserKeywordsPr
 
       // Extract keywords from result
       if (result.result) {
-        const keywordsData = result.result.keywords || [];
-        const total = result.result.total_contributions || 0;
-        
+        const queryResult = result.result as QueryKeywordsResult;
+        const keywordsData = queryResult.keywords || [];
+        const total = queryResult.total_contributions || 0;
+
         setKeywords(keywordsData);
         setTotalContributions(total);
         setHasLoaded(true);

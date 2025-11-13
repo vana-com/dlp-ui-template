@@ -55,6 +55,14 @@ NEXT_PUBLIC_CHAIN_ID=1
 NEXT_PUBLIC_RPC_URL=https://rpc.vana.org
 ```
 
+### Data Schema Configuration
+
+```bash
+NEXT_PUBLIC_SCHEMA_ID=36
+```
+
+**Note:** The schema ID identifies the data format registered in the Vana network for this DLP. All uploaded thoughts will be tagged with this schema ID for proper validation and processing.
+
 ## Optional Variables
 
 ### Testing
@@ -92,6 +100,9 @@ NEXT_PUBLIC_DLP_CONTRACT_ADDRESS=
 # Network
 NEXT_PUBLIC_CHAIN_ID=14800
 NEXT_PUBLIC_RPC_URL=https://rpc.moksha.vana.org
+
+# Data Schema
+NEXT_PUBLIC_SCHEMA_ID=36
 EOF
 ```
 

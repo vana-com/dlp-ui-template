@@ -45,7 +45,6 @@ export function VanaDlpIntegration() {
     contributionData,
     shareUrl,
     isLoading,
-    isSigningMessage,
     handleContributeData,
     resetFlow,
   } = useContributionFlow();
@@ -145,9 +144,7 @@ export function VanaDlpIntegration() {
                   {currentStep === 1
                     ? "Encrypting & uploading..."
                     : currentStep === 2
-                    ? isSigningMessage
-                      ? "Signing message..."
-                      : "Adding to blockchain..."
+                    ? "Adding to blockchain..."
                     : currentStep === 3
                     ? "Processing with runtime task..."
                     : currentStep === 4
