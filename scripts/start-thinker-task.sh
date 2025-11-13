@@ -1,6 +1,6 @@
 #!/bin/bash
 # Start Thinker Task for UI Testing
-# This script registers and starts the Thinker task in vana-runtime
+# This script registers and starts the Thinker task via orchestrator
 # so the UI can submit contributions to it.
 
 set -e
@@ -13,7 +13,9 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Configuration
-RUNTIME_URL="http://localhost:8000"
+ORCHESTRATOR_URL="https://vana-runtime-orchestrator-git-feat-pro-779i-47372e-opendatalabs.vercel.app"
+RUNTIME_ADDRESS="0xa2e19584bc2a4a293841128bb5b309914f67b865"
+API_BASE="$ORCHESTRATOR_URL/api/v1/runtime/$RUNTIME_ADDRESS"
 TASK_ID=999
 DATASET_ID=1
 DLP_ID=186
@@ -26,46 +28,67 @@ echo "=========================================="
 echo ""
 
 # ============================================================================
-# Check if runtime is running
+# Check if orchestrator and runtime are running
 # ============================================================================
-echo -e "${BLUE}[CHECK] Verifying Vana Runtime is running...${NC}"
-if ! curl -s "$RUNTIME_URL/health" > /dev/null; then
-    echo -e "${RED}✗ Vana Runtime is not running at $RUNTIME_URL${NC}"
+echo -e "${BLUE}[CHECK] Verifying orchestrator is running...${NC}"
+if ! curl -s "$ORCHESTRATOR_URL" > /dev/null 2>&1; then
+    echo -e "${RED}✗ Orchestrator is not running at $ORCHESTRATOR_URL${NC}"
     echo ""
-    echo "Please start the runtime first:"
-    echo "  cd ../vana-runtime"
-    echo "  docker-compose up -d"
+    echo "Please start the orchestrator first:"
+    echo "  cd ../vana-runtime-orchestrator"
+    echo "  npm run dev"
     echo ""
     exit 1
 fi
-echo -e "${GREEN}✓ Vana Runtime is running${NC}"
+echo -e "${GREEN}✓ Orchestrator is running${NC}"
+
+echo -e "${BLUE}[CHECK] Verifying Vana Runtime is accessible...${NC}"
+if ! curl -s "$API_BASE/health" > /dev/null; then
+    echo -e "${RED}✗ Runtime not accessible at $API_BASE${NC}"
+    echo ""
+    echo "Please ensure:"
+    echo "  1. Vana Runtime is running: cd ../vana-runtime && docker-compose -f docker-compose.dev.yml up -d"
+    echo "  2. Runtime is seeded in orchestrator: cd ../vana-runtime-orchestrator && npx tsx scripts/seed-local-runtime.ts"
+    echo ""
+    exit 1
+fi
+echo -e "${GREEN}✓ Vana Runtime is accessible via orchestrator${NC}"
 echo ""
 
 # ============================================================================
 # STEP 1: Register Task in Mock Registry
 # ============================================================================
 echo -e "${BLUE}[STEP 1] Registering Thinker Task (DLP $DLP_ID)...${NC}"
-echo "POST $RUNTIME_URL/v1/tasks/_mock/register"
+echo "POST $API_BASE/v1/tasks/_mock/register"
 echo ""
 
-REGISTER_RESPONSE=$(curl -s -X POST "$RUNTIME_URL/v1/tasks/_mock/register" \
+REGISTER_RESPONSE=$(curl -s -X POST "$API_BASE/v1/tasks/_mock/register" \
   -H "Content-Type: application/json" \
   -d "{
     \"task_id\": $TASK_ID,
-    \"image_url\": \"vana/thinker-task:demo\",
+    \"image_url\": \"vanaorg/vana-task-demo:latest\",
     \"dataset_id\": $DATASET_ID,
     \"dlp_id\": $DLP_ID,
     \"approved\": true
   }")
 
-echo "$REGISTER_RESPONSE" | jq '.'
-echo ""
-
-# Check for errors
-if echo "$REGISTER_RESPONSE" | jq -e '.error' > /dev/null; then
-    echo -e "${YELLOW}⚠ Registration may have failed (task might already be registered)${NC}"
+# Try to parse as JSON, show raw response if it fails
+if echo "$REGISTER_RESPONSE" | jq '.' > /dev/null 2>&1; then
+    echo "$REGISTER_RESPONSE" | jq '.'
+    echo ""
+    
+    # Check for errors
+    if echo "$REGISTER_RESPONSE" | jq -e '.error' > /dev/null; then
+        echo -e "${YELLOW}⚠ Registration may have failed (task might already be registered)${NC}"
+    else
+        echo -e "${GREEN}✓ Task registered in mock registry${NC}"
+    fi
 else
-    echo -e "${GREEN}✓ Task registered in mock registry${NC}"
+    echo -e "${RED}✗ Invalid JSON response from orchestrator:${NC}"
+    echo "$REGISTER_RESPONSE"
+    echo ""
+    echo "This might be an HTML error page. Check orchestrator logs."
+    exit 1
 fi
 echo ""
 
@@ -73,10 +96,10 @@ echo ""
 # STEP 2: Start the Task
 # ============================================================================
 echo -e "${BLUE}[STEP 2] Starting Thinker Task...${NC}"
-echo "POST $RUNTIME_URL/v1/tasks/$TASK_ID?dataset_id=$DATASET_ID&dlp_id=$DLP_ID"
+echo "POST $API_BASE/v1/tasks/$TASK_ID?dataset_id=$DATASET_ID&dlp_id=$DLP_ID"
 echo ""
 
-START_RESPONSE=$(curl -s -X POST "$RUNTIME_URL/v1/tasks/$TASK_ID?dataset_id=$DATASET_ID&dlp_id=$DLP_ID")
+START_RESPONSE=$(curl -s -X POST "$API_BASE/v1/tasks/$TASK_ID?dataset_id=$DATASET_ID&dlp_id=$DLP_ID")
 echo "$START_RESPONSE" | jq '.'
 echo ""
 
@@ -107,7 +130,7 @@ echo ""
 
 for i in {1..12}; do
     sleep 2
-    STATUS_RESPONSE=$(curl -s "$RUNTIME_URL/v1/tasks/$TASK_ID")
+    STATUS_RESPONSE=$(curl -s "$API_BASE/v1/tasks/$TASK_ID")
     TASK_STATUS=$(echo "$STATUS_RESPONSE" | jq -r '.status')
     
     echo -n "  Attempt $i/12: status=$TASK_STATUS"
@@ -139,10 +162,10 @@ echo ""
 # STEP 4: Verify Task is Ready
 # ============================================================================
 echo -e "${BLUE}[STEP 4] Verifying Task Status...${NC}"
-echo "GET $RUNTIME_URL/v1/tasks/$TASK_ID"
+echo "GET $API_BASE/v1/tasks/$TASK_ID"
 echo ""
 
-STATUS_RESPONSE=$(curl -s "$RUNTIME_URL/v1/tasks/$TASK_ID")
+STATUS_RESPONSE=$(curl -s "$API_BASE/v1/tasks/$TASK_ID")
 echo "$STATUS_RESPONSE" | jq '.'
 
 TASK_STATUS=$(echo "$STATUS_RESPONSE" | jq -r '.status')
@@ -170,10 +193,10 @@ echo ""
 # STEP 5: Test Health Endpoint
 # ============================================================================
 echo -e "${BLUE}[STEP 5] Testing Task Health...${NC}"
-echo "GET $RUNTIME_URL/v1/tasks/$TASK_ID/health"
+echo "GET $API_BASE/v1/tasks/$TASK_ID/health"
 echo ""
 
-HEALTH_RESPONSE=$(curl -s "$RUNTIME_URL/v1/tasks/$TASK_ID/health")
+HEALTH_RESPONSE=$(curl -s "$API_BASE/v1/tasks/$TASK_ID/health")
 echo "$HEALTH_RESPONSE" | jq '.'
 echo ""
 
@@ -201,15 +224,15 @@ echo "  Container: $CONTAINER_NAME"
 echo ""
 echo -e "${BLUE}Next Steps:${NC}"
 echo "  1. Start the UI: cd dlp-ui-template && yarn dev"
-echo "  2. Open: http://localhost:3000"
+echo "  2. Open the contributor UI (ie. http://localhost:3000)"
 echo "  3. Sign in with Google"
 echo "  4. Connect your wallet"
 echo "  5. Contribute a thought!"
 echo ""
 echo -e "${YELLOW}Useful Commands:${NC}"
-echo "  Check task status:  curl http://localhost:8000/v1/tasks/$TASK_ID"
-echo "  View operations:    curl http://localhost:8000/v1/tasks/$TASK_ID/operations"
+echo "  Check task status:  curl $API_BASE/v1/tasks/$TASK_ID"
+echo "  View operations:    curl $API_BASE/v1/tasks/$TASK_ID/operations"
 echo "  View task logs:     docker logs $CONTAINER_NAME"
-echo "  Stop task:          curl -X DELETE http://localhost:8000/v1/tasks/$TASK_ID"
+echo "  Stop task:          curl -X DELETE $API_BASE/v1/tasks/$TASK_ID"
 echo ""
 

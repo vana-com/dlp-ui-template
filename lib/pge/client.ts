@@ -12,7 +12,7 @@ import { BrowserECIESProvider } from "@opendatalabs/vana-sdk/browser";
  * encryption key with the PGE public key.
  */
 
-const PGE_URL = process.env.NEXT_PUBLIC_PGE_URL || 
+export const PGE_URL = process.env.NEXT_PUBLIC_PGE_URL || 
   "https://5d2f3c508220a6a0fdd07eb770eac06c319e758a-8000.dstack-pha-prod7.phala.network";
 
 // Cache for PGE public key (can be refreshed)
