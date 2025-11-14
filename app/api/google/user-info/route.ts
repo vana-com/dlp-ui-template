@@ -6,6 +6,12 @@ import { authOptions } from "@/lib/auth/authOptions";
 export async function GET() {
   const session = await getServerSession(authOptions);
 
+  console.log("Session status:", {
+    hasSession: !!session,
+    hasAccessToken: !!session?.accessToken,
+    accessTokenPreview: session?.accessToken ? `${session.accessToken.substring(0, 10)}...` : 'none',
+  });
+
   if (!session || !session.accessToken) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
