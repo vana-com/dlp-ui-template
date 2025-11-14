@@ -19,10 +19,10 @@ export function LoginButton() {
   };
 
   return (
-    <Button 
-      onClick={handleLogin} 
-      disabled={isLoading} 
-      className="flex items-center gap-2"
+    <Button
+      onClick={handleLogin}
+      disabled={isLoading}
+      className="flex items-center gap-2 cursor-pointer"
       size="lg"
     >
       {isLoading ? (

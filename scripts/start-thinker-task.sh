@@ -52,7 +52,7 @@ REGISTER_RESPONSE=$(curl -s -X POST "$RUNTIME_URL/v1/tasks/_mock/register" \
   -H "Content-Type: application/json" \
   -d "{
     \"task_id\": $TASK_ID,
-    \"image_url\": \"vana/thinker-task:demo\",
+    \"image_url\": \"vanaorg/vana-task-demo\",
     \"dataset_id\": $DATASET_ID,
     \"dlp_id\": $DLP_ID,
     \"approved\": true

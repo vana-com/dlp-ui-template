@@ -113,14 +113,16 @@ export default function ConsumePage() {
   };
 
   const handlePay = async () => {
-    if (!operationId || !price || !walletClient) return;
+    if (!operationId || !price || !walletClient || !address) return;
 
     setStatus("paying");
     setError(null);
 
     try {
+      // Initialize SDK with walletClient (same pattern as vana-app)
       const sdk = Vana({
-        walletClient,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        walletClient: walletClient as any, // Type assertion needed for wagmi walletClient
       });
 
       const priceWei = parseEther(price);
