@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Address, Hash } from "viem";
 import { useVanaSdk } from "./useVanaSdk";
-import { fetchPgePublicKey, derivePgeAddress } from "@/lib/pge/client";
+import { fetchPgePublicKey } from "@/lib/pge/client";
 import { ThoughtData, UserInfo } from "../types";
 
 export interface UploadResponse {
