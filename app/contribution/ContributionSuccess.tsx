@@ -1,44 +1,50 @@
-import { CheckCircle, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CheckCircle, ExternalLink, Plus } from "lucide-react";
 import { ContributionSteps } from "./ContributionSteps";
 import { ContributionSummary } from "./ContributionSummary";
-import { ContributionData, DriveInfo, UserInfo } from "./types";
+import { UserKeywords } from "./UserKeywords";
+import { ContributionData, UserInfo } from "./types";
 import { getTransactionUrl } from "../../contracts/chains";
+import { useAccount } from "wagmi";
 
 type ContributionSuccessProps = {
   contributionData: ContributionData;
   completedSteps: number[];
   shareUrl?: string;
   userInfo: UserInfo;
-  driveInfo: DriveInfo;
+  onReset?: () => void;
 };
 
 export function ContributionSuccess({
   contributionData,
   completedSteps,
   userInfo,
-  driveInfo,
+  onReset,
 }: ContributionSuccessProps) {
-  // Determine how many steps were completed
-  const fullyCompleted = completedSteps.includes(5);
-  const proofCompleted = completedSteps.includes(4);
-  const proofRequested = completedSteps.includes(3);
+  // Determine how many steps were completed (now 4 steps total)
+  const fullyCompleted = completedSteps.includes(4);
+  const taskProcessed = completedSteps.includes(3);
+
+  const thoughtText = contributionData.thoughtData?.thought;
+  const { address: walletAddress } = useAccount();
+  
+  // Get contributor ID (wallet address or email)
+  const contributorId = walletAddress || userInfo.email;
 
   return (
     <div className="space-y-4">
-      <div className="bg-green-50 p-4 rounded-md flex items-center">
-        <CheckCircle className="h-6 w-6 text-green-600 mr-3" />
-        <div>
-          <h3 className="font-medium text-green-800">
-            Contribution Successful!
+      <div className="bg-green-50 dark:bg-green-950 p-4 rounded-md flex items-center">
+        <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400 mr-3" />
+        <div className="flex-1">
+          <h3 className="font-medium text-green-800 dark:text-green-200">
+            Thought Contributed Successfully!
           </h3>
-          <p className="text-sm text-green-700">
+          <p className="text-sm text-green-700 dark:text-green-300">
             {fullyCompleted
-              ? "Your data has been successfully contributed and your reward has been claimed."
-              : proofCompleted
-              ? "Your data has been successfully contributed and verified by the TEE."
-              : proofRequested
-              ? "Your data has been contributed and proof request has been submitted."
-              : "Your data has been successfully contributed to the blockchain."}
+              ? "Your thought has been successfully processed and your reward has been claimed."
+              : taskProcessed
+              ? "Your thought has been successfully processed by the Thinker task."
+              : "Your thought has been successfully contributed to the blockchain."}
           </p>
         </div>
       </div>
@@ -69,15 +75,6 @@ export function ContributionSuccess({
             )}
           </div>
 
-          {proofRequested && (
-            <>
-              <div className="text-muted-foreground">TEE Job ID</div>
-              <div className="font-mono text-xs truncate">
-                {contributionData.teeJobId || "Processing..."}
-              </div>
-            </>
-          )}
-
           {fullyCompleted && (
             <>
               <div className="text-muted-foreground">Reward Transaction</div>
@@ -101,10 +98,10 @@ export function ContributionSuccess({
         </div>
       </div>
 
-      {proofCompleted && contributionData.teeProofData && (
-        <div className="space-y-3 bg-slate-50 p-4 rounded-md text-sm">
-          <h3 className="font-medium">TEE Proof Results</h3>
-          <div className="max-h-48 overflow-y-auto bg-slate-100 p-2 rounded-md font-mono text-xs">
+      {taskProcessed && contributionData.teeProofData && (
+        <div className="space-y-3 bg-slate-50 dark:bg-slate-900 p-4 rounded-md text-sm">
+          <h3 className="font-medium">Task Processing Results</h3>
+          <div className="max-h-48 overflow-y-auto bg-slate-100 dark:bg-slate-800 p-2 rounded-md font-mono text-xs">
             <pre className="whitespace-pre-wrap">
               {JSON.stringify(contributionData.teeProofData, null, 2)}
             </pre>
@@ -112,15 +109,33 @@ export function ContributionSuccess({
         </div>
       )}
 
+      {/* User Keywords - Show insights from their contributions */}
+      {taskProcessed && contributorId && (
+        <UserKeywords contributorId={contributorId} autoLoad={false} />
+      )}
+
       {/* Stepper UI showing completed steps */}
       <ContributionSteps currentStep={0} completedSteps={completedSteps} />
 
-      {userInfo && (
+      {/* Show the contributed thought */}
+      {userInfo && thoughtText && (
         <ContributionSummary
           userInfo={userInfo}
-          driveInfo={driveInfo}
+          thoughtText={thoughtText}
           isEncrypted={true}
         />
+      )}
+
+      {/* Option to contribute another thought */}
+      {onReset && (
+        <Button 
+          onClick={onReset} 
+          variant="outline" 
+          className="w-full"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Contribute Another Thought
+        </Button>
       )}
     </div>
   );
