@@ -53,27 +53,29 @@ export default function ConsumePage() {
     setError(null);
 
     try {
-      // Sign request
-      const message = JSON.stringify({
+      // Build request body
+      const requestBody = {
         permission_id: PERMISSION_ID,
-        timestamp: Date.now(),
-      });
-      const signature = await walletClient.signMessage({ message });
+        operation_request_json: {
+          parameters: {
+            top_n: 10,
+          },
+        },
+      };
 
-      // Submit to runtime
+      // Sign the canonical request body (RFC 8785 - sorted keys, no whitespace)
+      const canonicalMessage = JSON.stringify(requestBody, Object.keys(requestBody).sort(), null);
+      const signature = await walletClient.signMessage({ message: canonicalMessage });
+
+      // Submit to runtime with signature
       const response = await fetch(
         `${RUNTIME_URL}/v1/tasks/${TASK_ID}/invoke/query_keywords`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            permission_id: PERMISSION_ID,
+            ...requestBody,
             grantee_signature: signature,
-            operation_request_json: {
-              parameters: {
-                top_n: 10,
-              },
-            },
           }),
         }
       );
