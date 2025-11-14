@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles, Loader2, DollarSign } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAccount, useWalletClient } from "wagmi";
 import { Vana } from "@opendatalabs/vana-sdk/browser";
 import { parseEther } from "viem";
@@ -23,11 +23,25 @@ export default function ConsumePage() {
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
 
+  const [mounted, setMounted] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const [operationId, setOperationId] = useState<string | null>(null);
   const [price, setPrice] = useState<string | null>(null);
   const [keywords, setKeywords] = useState<KeywordData[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Prevent hydration mismatch by not rendering wallet-dependent UI until mounted
+  if (!mounted) {
+    return (
+      <div className="container mx-auto p-8 max-w-2xl">
+        <h1 className="text-3xl font-bold mb-8">Dataset Insights</h1>
+      </div>
+    );
+  }
 
   const handleRequest = async () => {
     if (!address || !walletClient) {
