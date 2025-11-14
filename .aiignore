@@ -1,0 +1,39 @@
+# Security
+.env
+.env.*
+!.env.example
+
+# Static assets (lengthy XML, no logic insight)
+public/*.svg
+public/*.png
+public/*.jpg
+public/*.jpeg
+public/*.gif
+public/*.ico
+public/*.webp
+
+# Generic UI boilerplate (focus on app-specific logic instead)
+components/ui/
+
+# Lock files and auto-generated types
+yarn.lock
+package-lock.json
+pnpm-lock.yaml
+bun.lockb
+next-env.d.ts
+*.tsbuildinfo
+
+# Build artifacts
+node_modules/
+.next/
+out/
+dist/
+build/
+
+# IDE files
+.cursor/
+.cursorignore
+.vscode/
+.idea/
+*.swp
+*.swo
