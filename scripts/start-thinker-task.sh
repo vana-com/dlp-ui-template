@@ -13,10 +13,10 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Configuration
-ORCHESTRATOR_URL="https://vana-runtime-orchestrator-git-feat-pro-779i-47372e-opendatalabs.vercel.app"
+ORCHESTRATOR_URL="https://vana-runtime-orchestrator-9f7zuwvxe-opendatalabs.vercel.app"
 RUNTIME_ADDRESS="0xa2e19584bc2a4a293841128bb5b309914f67b865"
 API_BASE="$ORCHESTRATOR_URL/api/v1/runtime/$RUNTIME_ADDRESS"
-TASK_ID=999
+TASK_ID=1000
 DATASET_ID=1
 DLP_ID=186
 
