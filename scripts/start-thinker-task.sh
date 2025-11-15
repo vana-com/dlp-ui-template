@@ -14,6 +14,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 RUNTIME_URL="http://localhost:8000"
+#RUNTIME_URL="https://3cbe8217a3038bc63ab790faef68fbb1d2f26ac2-8000.dstack-prod7.phala.network"
 TASK_ID=999
 DATASET_ID=1
 DLP_ID=186
@@ -52,7 +53,7 @@ REGISTER_RESPONSE=$(curl -s -X POST "$RUNTIME_URL/v1/tasks/_mock/register" \
   -H "Content-Type: application/json" \
   -d "{
     \"task_id\": $TASK_ID,
-    \"image_url\": \"vanaorg/vana-task-demo\",
+    \"image_url\": \"vanaorg/vana-task-demo:latest\",
     \"dataset_id\": $DATASET_ID,
     \"dlp_id\": $DLP_ID,
     \"approved\": true

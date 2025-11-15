@@ -53,35 +53,45 @@ export default function ConsumePage() {
     setError(null);
 
     try {
-      // Build request body
-      const requestBody = {
+      // Build operation request (same pattern as vana-sdk)
+      const operationRequest = {
         permission_id: PERMISSION_ID,
-        operation_request_json: {
-          parameters: {
-            top_n: 10,
-          },
+        parameters: {
+          top_n: 10,
         },
       };
 
-      // Sign the canonical request body (RFC 8785 - sorted keys, no whitespace)
-      const canonicalMessage = JSON.stringify(requestBody, Object.keys(requestBody).sort(), null);
-      const signature = await walletClient.signMessage({ message: canonicalMessage });
+      // Convert to JSON string (what will be signed)
+      const operationRequestJson = JSON.stringify(operationRequest);
 
-      // Submit to runtime with signature
+      // Sign the JSON string (same as vana-sdk and vana-personal-server)
+      const signature = await walletClient.signMessage({ message: operationRequestJson });
+
+      // Submit to runtime with personal-server format
       const response = await fetch(
-        `${RUNTIME_URL}/v1/tasks/${TASK_ID}/invoke/query_keywords`,
+        `${RUNTIME_URL}/v1/tasks/${TASK_ID}/invoke/aggregate_keywords`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            ...requestBody,
             grantee_signature: signature,
+            operation_request_json: operationRequestJson,
           }),
         }
       );
 
       if (!response.ok) {
-        throw new Error("Failed to submit request");
+        // Parse error response to show actual server error message
+        let errorMessage = `Failed to submit request: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          if (errorData.detail) {
+            errorMessage = errorData.detail;
+          }
+        } catch (parseError) {
+          // Can't parse JSON, use default message
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -91,7 +101,16 @@ export default function ConsumePage() {
       // Poll for status
       pollStatus(data.operation_id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Request failed");
+      // Parse common errors into user-friendly messages
+      let errorMessage = "Request failed";
+      if (err instanceof Error) {
+        if (err.message.includes("User rejected") || err.message.includes("User denied")) {
+          errorMessage = "Signature request cancelled. Please try again.";
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      setError(errorMessage);
       setStatus("error");
     }
   };
@@ -99,7 +118,7 @@ export default function ConsumePage() {
   const pollStatus = async (opId: string) => {
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(`${RUNTIME_URL}/v1/operations/${opId}`);
+        const response = await fetch(`${RUNTIME_URL}/v1/tasks/${TASK_ID}/operations/${opId}`);
         const data = await response.json();
 
         if (data.payment_status === "pending") {
@@ -111,11 +130,21 @@ export default function ConsumePage() {
           const artifactsResponse = await fetch(
             `${RUNTIME_URL}/v1/operations/${opId}/artifacts`
           );
-          const results = await artifactsResponse.json();
+          const artifactsData = await artifactsResponse.json();
 
-          if (results.keywords) {
-            setKeywords(results.keywords);
+          // Download the first artifact (keyword_evolution.json)
+          if (artifactsData.artifacts && artifactsData.artifacts.length > 0) {
+            const artifact = artifactsData.artifacts[0];
+            const downloadUrl = `${RUNTIME_URL}${artifact.download_url}`;
+
+            const fileResponse = await fetch(downloadUrl);
+            const results = await fileResponse.json();
+
+            if (results.top_keywords) {
+              setKeywords(results.top_keywords);
+            }
           }
+
           setStatus("paid");
           clearInterval(interval);
         }
@@ -129,7 +158,21 @@ export default function ConsumePage() {
   };
 
   const handlePay = async () => {
-    if (!operationId || !price || !walletClient || !address) return;
+    // Validate all required values with user-friendly error messages
+    if (!address || !walletClient) {
+      setError("Please connect your wallet to continue");
+      return;
+    }
+
+    if (!operationId) {
+      setError("Operation ID not found. Please refresh and try again.");
+      return;
+    }
+
+    if (!price) {
+      setError("Price not loaded yet. Please wait a moment and try again.");
+      return;
+    }
 
     setStatus("paying");
     setError(null);
@@ -141,7 +184,7 @@ export default function ConsumePage() {
         walletClient: walletClient as any, // Type assertion needed for wagmi walletClient
       });
 
-      const priceWei = parseEther(price);
+      const priceWei = parseEther(price.toString());
       const result = await sdk.accessSettlement.settlePaymentWithNative(
         operationId,
         priceWei
@@ -154,7 +197,20 @@ export default function ConsumePage() {
       setStatus("processing");
       pollStatus(operationId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Payment failed");
+      // Parse common blockchain errors into user-friendly messages
+      let errorMessage = "Payment failed";
+      if (err instanceof Error) {
+        if (err.message.includes("User rejected")) {
+          errorMessage = "Transaction cancelled by user";
+        } else if (err.message.includes("insufficient funds")) {
+          errorMessage = "Insufficient VANA balance to complete payment";
+        } else if (err.message.includes("already logged")) {
+          errorMessage = "Payment already processed. Please refresh the page.";
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      setError(errorMessage);
       setStatus("pending_payment");
     }
   };
