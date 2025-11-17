@@ -3,12 +3,29 @@
 
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import { JWT } from "next-auth/jwt";
+
+/**
+ * Extended JWT token with OAuth tokens
+ */
+interface ExtendedToken extends JWT {
+  accessToken?: string;
+  accessTokenExpires?: number;
+  refreshToken?: string;
+  idToken?: string;
+  error?: string;
+}
 
 /**
  * Refreshes the Google OAuth access token using the refresh token
  */
-async function refreshAccessToken(token: any) {
+async function refreshAccessToken(token: ExtendedToken): Promise<ExtendedToken> {
   try {
+    // Ensure refresh token exists
+    if (!token.refreshToken) {
+      throw new Error("No refresh token available");
+    }
+
     const url =
       "https://oauth2.googleapis.com/token?" +
       new URLSearchParams({
