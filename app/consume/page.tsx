@@ -90,6 +90,7 @@ export default function ConsumePage() {
           }
         } catch (parseError) {
           // Can't parse JSON, use default message
+          console.error(parseError)
         }
         throw new Error(errorMessage);
       }
