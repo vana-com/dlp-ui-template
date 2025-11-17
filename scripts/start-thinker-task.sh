@@ -13,8 +13,8 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Configuration
-RUNTIME_URL="http://localhost:8000"
-#RUNTIME_URL="https://3cbe8217a3038bc63ab790faef68fbb1d2f26ac2-8000.dstack-prod7.phala.network"
+#RUNTIME_URL="http://localhost:8000"
+RUNTIME_URL="https://6db7674377b0b27b55d9433373f6c4472723a763-8000.dstack-prod7.phala.network"
 TASK_ID=999
 DATASET_ID=1
 DLP_ID=186

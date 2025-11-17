@@ -118,7 +118,14 @@ export default function ConsumePage() {
   const pollStatus = async (opId: string) => {
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(`${RUNTIME_URL}/v1/tasks/${TASK_ID}/operations/${opId}`);
+        //
+        // https://vana-runtime-orchestrator-git-feat-pro-779i-47372e-opendatalabs.vercel.app/api/v1/runtime/0xa2e19584bc2a4a293841128bb5b309914f67b865/v1/operations/999-e1ac7b57-eac1d00d
+        // RUNTIME_URL = NEXT_PUBLIC_DLP_RUNTIME_URL =
+        // https://vana-runtime-orchestrator-git-feat-pro-779i-47372e-opendatalabs.vercel.app/api/v1/runtime/0xa2e19584bc2a4a293841128bb5b309914f67b865
+        // url = https://vana-runtime-orchestrator-git-feat-pro-779i-47372e-opendatalabs.vercel.app/api/v1/runtime/0xa2e19584bc2a4a293841128bb5b309914f67b865/tasks/
+        const operationStatusUrl = `${RUNTIME_URL}/tasks/${TASK_ID}/operations/${opId}`;
+        console.log(`Polling operation status: ${operationStatusUrl}`);
+        const response = await fetch(operationStatusUrl);
         const data = await response.json();
 
         if (data.payment_status === "pending") {
@@ -127,8 +134,9 @@ export default function ConsumePage() {
           clearInterval(interval);
         } else if (data.payment_status === "settled" && data.status === "completed") {
           // Download and parse results
+          // https://6db7674377b0b27b55d9433373f6c4472723a763-8000.dstack-prod7.phala.network/v1/tasks/task-999-e1ac7b57-vana-tas-e49a/operations/999-e1ac7b57-eac1d00d
           const artifactsResponse = await fetch(
-            `${RUNTIME_URL}/v1/operations/${opId}/artifacts`
+            `${RUNTIME_URL}/v1/tasks/${TASK_ID}/operations/${opId}/artifacts`
           );
           const artifactsData = await artifactsResponse.json();
 
