@@ -124,7 +124,7 @@ export default function ConsumePage() {
         // RUNTIME_URL = NEXT_PUBLIC_DLP_RUNTIME_URL =
         // https://vana-runtime-orchestrator-git-feat-pro-779i-47372e-opendatalabs.vercel.app/api/v1/runtime/0xa2e19584bc2a4a293841128bb5b309914f67b865
         // url = https://vana-runtime-orchestrator-git-feat-pro-779i-47372e-opendatalabs.vercel.app/api/v1/runtime/0xa2e19584bc2a4a293841128bb5b309914f67b865/tasks/
-        const operationStatusUrl = `${RUNTIME_URL}/tasks/${TASK_ID}/operations/${opId}`;
+        const operationStatusUrl = `${RUNTIME_URL}/v1/tasks/${TASK_ID}/operations/${opId}`;
         console.log(`Polling operation status: ${operationStatusUrl}`);
         const response = await fetch(operationStatusUrl);
         const data = await response.json();
@@ -228,7 +228,7 @@ export default function ConsumePage() {
   if (status === "idle") {
     return (
       <div className="container mx-auto p-8 max-w-2xl">
-        <h1 className="text-3xl font-bold mb-8">Dataset Insights.</h1>
+        <h1 className="text-3xl font-bold mb-8">Dataset Insights</h1>
 
         <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950 dark:to-blue-950 p-4 rounded-lg border border-purple-200 dark:border-purple-800">
           <div className="flex items-start gap-3">
@@ -267,7 +267,7 @@ export default function ConsumePage() {
   if (status === "requesting" || status === "processing") {
     return (
       <div className="container mx-auto p-8 max-w-2xl">
-        <h1 className="text-3xl font-bold mb-8">Dataset Insights.</h1>
+        <h1 className="text-3xl font-bold mb-8">Dataset Insights</h1>
 
         <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border">
           <div className="flex items-center justify-center gap-2">
@@ -285,7 +285,7 @@ export default function ConsumePage() {
   if (status === "pending_payment") {
     return (
       <div className="container mx-auto p-8 max-w-2xl">
-        <h1 className="text-3xl font-bold mb-8">Dataset Insights.</h1>
+        <h1 className="text-3xl font-bold mb-8">Dataset Insights</h1>
 
         <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950 dark:to-blue-950 p-4 rounded-lg border border-purple-200 dark:border-purple-800">
           <div className="flex items-start gap-3">
@@ -323,7 +323,7 @@ export default function ConsumePage() {
   if (status === "paying") {
     return (
       <div className="container mx-auto p-8 max-w-2xl">
-        <h1 className="text-3xl font-bold mb-8">Dataset Insights.</h1>
+        <h1 className="text-3xl font-bold mb-8">Dataset Insights</h1>
 
         <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border">
           <div className="flex items-center justify-center gap-2">
@@ -341,7 +341,7 @@ export default function ConsumePage() {
   if (status === "paid") {
     return (
       <div className="container mx-auto p-8 max-w-2xl">
-        <h1 className="text-3xl font-bold mb-8">Dataset Insights.</h1>
+        <h1 className="text-3xl font-bold mb-8">Dataset Insights</h1>
 
         <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950 dark:to-blue-950 p-4 rounded-lg border border-purple-200 dark:border-purple-800">
           <div className="flex items-center gap-2 mb-3">
@@ -385,7 +385,7 @@ export default function ConsumePage() {
   // Error state
   return (
     <div className="container mx-auto p-8 max-w-2xl">
-      <h1 className="text-3xl font-bold mb-8">Dataset Insights.</h1>
+      <h1 className="text-3xl font-bold mb-8">Dataset Insights</h1>
 
       <div className="bg-yellow-50 dark:bg-yellow-950 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
         <p className="text-xs text-yellow-800 dark:text-yellow-200">
