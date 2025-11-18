@@ -13,8 +13,8 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Configuration
-#RUNTIME_URL="http://localhost:8000"
-RUNTIME_URL="https://6db7674377b0b27b55d9433373f6c4472723a763-8000.dstack-prod7.phala.network"
+RUNTIME_URL="http://localhost:8000"
+#RUNTIME_URL="https://6db7674377b0b27b55d9433373f6c4472723a763-8000.dstack-prod7.phala.network"
 TASK_ID=999
 DATASET_ID=1
 DLP_ID=186
@@ -27,31 +27,57 @@ echo "=========================================="
 echo ""
 
 # ============================================================================
-# Check if orchestrator and runtime are running
+# Detect mode: Direct runtime or via orchestrator
 # ============================================================================
-echo -e "${BLUE}[CHECK] Verifying orchestrator is running...${NC}"
-if ! curl -s "$ORCHESTRATOR_URL" > /dev/null 2>&1; then
-    echo -e "${RED}✗ Orchestrator is not running at $ORCHESTRATOR_URL${NC}"
+if [ -n "$ORCHESTRATOR_URL" ]; then
+    # Orchestrator mode: use API_BASE
+    API_BASE="${API_BASE:-$ORCHESTRATOR_URL/api/v1/runtime/0xa2e19584bc2a4a293841128bb5b309914f67b865}"
+    echo -e "${BLUE}Mode: Via Orchestrator${NC}"
+    echo "  Orchestrator: $ORCHESTRATOR_URL"
+    echo "  API Base: $API_BASE"
     echo ""
-    echo "Please start the orchestrator first:"
-    echo "  cd ../vana-runtime-orchestrator"
-    echo "  npm run dev"
-    echo ""
-    exit 1
-fi
-echo -e "${GREEN}✓ Orchestrator is running${NC}"
 
-echo -e "${BLUE}[CHECK] Verifying Vana Runtime is accessible...${NC}"
-if ! curl -s "$API_BASE/health" > /dev/null; then
-    echo -e "${RED}✗ Runtime not accessible at $API_BASE${NC}"
+    echo -e "${BLUE}[CHECK] Verifying orchestrator is running...${NC}"
+    if ! curl -s "$ORCHESTRATOR_URL" > /dev/null 2>&1; then
+        echo -e "${RED}✗ Orchestrator is not running at $ORCHESTRATOR_URL${NC}"
+        echo ""
+        echo "Please start the orchestrator first:"
+        echo "  cd ../vana-runtime-orchestrator"
+        echo "  npm run dev"
+        echo ""
+        exit 1
+    fi
+    echo -e "${GREEN}✓ Orchestrator is running${NC}"
+
+    echo -e "${BLUE}[CHECK] Verifying Vana Runtime is accessible via orchestrator...${NC}"
+    if ! curl -s "$API_BASE/health" > /dev/null; then
+        echo -e "${RED}✗ Runtime not accessible at $API_BASE${NC}"
+        echo ""
+        echo "Please ensure:"
+        echo "  1. Vana Runtime is running"
+        echo "  2. Runtime is seeded in orchestrator: cd ../vana-runtime-orchestrator && npx tsx scripts/seed-local-runtime.ts"
+        echo ""
+        exit 1
+    fi
+    echo -e "${GREEN}✓ Vana Runtime is accessible via orchestrator${NC}"
+else
+    # Direct mode: use RUNTIME_URL
+    API_BASE="$RUNTIME_URL"
+    echo -e "${BLUE}Mode: Direct to Runtime${NC}"
+    echo "  Runtime URL: $RUNTIME_URL"
     echo ""
-    echo "Please ensure:"
-    echo "  1. Vana Runtime is running: cd ../vana-runtime && docker-compose -f docker-compose.dev.yml up -d"
-    echo "  2. Runtime is seeded in orchestrator: cd ../vana-runtime-orchestrator && npx tsx scripts/seed-local-runtime.ts"
-    echo ""
-    exit 1
+
+    echo -e "${BLUE}[CHECK] Verifying Vana Runtime is accessible...${NC}"
+    if ! curl -s "$RUNTIME_URL/health" > /dev/null; then
+        echo -e "${RED}✗ Runtime not accessible at $RUNTIME_URL${NC}"
+        echo ""
+        echo "Please ensure Vana Runtime is running:"
+        echo "  cd ../vana-runtime && docker-compose -f docker-compose.dev.yml up -d"
+        echo ""
+        exit 1
+    fi
+    echo -e "${GREEN}✓ Vana Runtime is accessible${NC}"
 fi
-echo -e "${GREEN}✓ Vana Runtime is accessible via orchestrator${NC}"
 echo ""
 
 # ============================================================================

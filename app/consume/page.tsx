@@ -135,7 +135,6 @@ export default function ConsumePage() {
           clearInterval(interval);
         } else if (data.payment_status === "settled" && data.status === "completed") {
           // Download and parse results
-          // https://6db7674377b0b27b55d9433373f6c4472723a763-8000.dstack-prod7.phala.network/v1/tasks/task-999-e1ac7b57-vana-tas-e49a/operations/999-e1ac7b57-eac1d00d
           const artifactsResponse = await fetch(
             `${RUNTIME_URL}/v1/tasks/${TASK_ID}/operations/${opId}/artifacts`
           );
