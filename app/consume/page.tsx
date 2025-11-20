@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles, Loader2, DollarSign, Download, CheckCircle, Clock, XCircle, History, RefreshCw } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAccount, useWalletClient } from "wagmi";
 import { Vana } from "@opendatalabs/vana-sdk/browser";
 import { parseEther } from "viem";
@@ -34,8 +34,11 @@ interface Artifact {
 
 interface ArtifactData {
   keywords?: string[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   evolution?: Record<string, any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   insights?: Record<string, any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   raw?: any;
 }
 
@@ -48,7 +51,6 @@ export default function ConsumePage() {
   // My Purchases state
   const [operations, setOperations] = useState<Operation[]>([]);
   const [loadingOperations, setLoadingOperations] = useState(false);
-  const [selectedOperation, setSelectedOperation] = useState<string | null>(null);
   const [artifacts, setArtifacts] = useState<Record<string, Artifact[]>>({});
   const [artifactData, setArtifactData] = useState<Record<string, ArtifactData>>({});
   const [expandedArtifacts, setExpandedArtifacts] = useState<Set<string>>(new Set());
@@ -60,26 +62,7 @@ export default function ConsumePage() {
   const [currentPrice, setCurrentPrice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Load user's operations when address changes
-  useEffect(() => {
-    if (mounted && address) {
-      loadMyOperations();
-    }
-  }, [mounted, address]);
-
-  if (!mounted) {
-    return (
-      <div className="container mx-auto p-8 max-w-4xl">
-        <h1 className="text-3xl font-bold mb-8">Thinker DLP Data Access</h1>
-      </div>
-    );
-  }
-
-  const loadMyOperations = async () => {
+  const loadMyOperations = useCallback(async () => {
     if (!address) return;
 
     setLoadingOperations(true);
@@ -101,7 +84,26 @@ export default function ConsumePage() {
     } finally {
       setLoadingOperations(false);
     }
-  };
+  }, [address]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Load user's operations when address changes
+  useEffect(() => {
+    if (mounted && address) {
+      loadMyOperations();
+    }
+  }, [mounted, address, loadMyOperations]);
+
+  if (!mounted) {
+    return (
+      <div className="container mx-auto p-8 max-w-4xl">
+        <h1 className="text-3xl font-bold mb-8">Thinker DLP Data Access</h1>
+      </div>
+    );
+  }
 
   const loadArtifacts = async (operationId: string) => {
     try {
@@ -379,7 +381,7 @@ export default function ConsumePage() {
       await handlePayInvoice(currentOperationId, parseFloat(currentPrice));
       setRequestStatus("processing");
       pollOperationStatus(currentOperationId);
-    } catch (err) {
+    } catch {
       setRequestStatus("pending_payment");
     }
   };
@@ -559,42 +561,48 @@ export default function ConsumePage() {
                             )}
 
                             {/* Evolution Data */}
-                            {data.evolution && Object.keys(data.evolution).length > 0 && (
-                              <div className="mb-3">
-                                <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                  Keyword Evolution
-                                </p>
-                                <div className="space-y-1 max-h-48 overflow-y-auto">
-                                  {Object.entries(data.evolution).slice(0, 10).map(([period, keywords]: [string, any]) => (
-                                    <div key={period} className="text-xs">
-                                      <span className="font-medium text-gray-600 dark:text-gray-400">
-                                        {period}:
-                                      </span>
-                                      <span className="ml-2 text-gray-700 dark:text-gray-300">
-                                        {Array.isArray(keywords) ? keywords.join(', ') : JSON.stringify(keywords)}
-                                      </span>
-                                    </div>
-                                  ))}
+                            {(() => {
+                              if (!data.evolution || typeof data.evolution !== 'object' || Object.keys(data.evolution).length === 0) return null;
+                              return (
+                                <div className="mb-3">
+                                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Keyword Evolution
+                                  </p>
+                                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                                    {Object.entries(data.evolution).slice(0, 10).map(([period, keywords]) => (
+                                      <div key={period} className="text-xs">
+                                        <span className="font-medium text-gray-600 dark:text-gray-400">
+                                          {period}:
+                                        </span>
+                                        <span className="ml-2 text-gray-700 dark:text-gray-300">
+                                          {Array.isArray(keywords) ? keywords.join(', ') : JSON.stringify(keywords)}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              );
+                            })() as React.ReactNode}
 
                             {/* Insights */}
-                            {data.insights && Object.keys(data.insights).length > 0 && (
-                              <div className="mb-3">
-                                <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                  Insights
-                                </p>
-                                <div className="space-y-1 text-xs text-gray-700 dark:text-gray-300">
-                                  {Object.entries(data.insights).map(([key, value]) => (
-                                    <div key={key}>
-                                      <span className="font-medium">{key}:</span>{' '}
-                                      {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                                    </div>
-                                  ))}
+                            {(() => {
+                              if (!data.insights || typeof data.insights !== 'object' || Object.keys(data.insights).length === 0) return null;
+                              return (
+                                <div className="mb-3">
+                                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Insights
+                                  </p>
+                                  <div className="space-y-1 text-xs text-gray-700 dark:text-gray-300">
+                                    {Object.entries(data.insights).map(([key, value]) => (
+                                      <div key={key}>
+                                        <span className="font-medium">{key}:</span>{' '}
+                                        {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              );
+                            })() as React.ReactNode}
 
                             {/* Raw Data Fallback */}
                             {!data.keywords && !data.evolution && !data.insights && data.raw && (
@@ -688,7 +696,7 @@ export default function ConsumePage() {
             </div>
           )}
 
-          {requestStatus === "pending_payment" && currentOperationId && currentPrice && (
+          {(requestStatus === "pending_payment" || requestStatus === "paying") && currentOperationId && currentPrice && (
             <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950 dark:to-blue-950 p-6 rounded-lg border border-purple-200 dark:border-purple-800">
               <div className="flex items-start gap-3">
                 <DollarSign className="h-6 w-6 text-purple-600 dark:text-purple-400 mt-0.5" />
