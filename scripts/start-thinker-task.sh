@@ -81,6 +81,56 @@ fi
 echo ""
 
 # ============================================================================
+# STEP 0: Check and Clean Up Existing Task
+# ============================================================================
+echo -e "${BLUE}[STEP 0] Checking for existing task...${NC}"
+EXISTING_TASK=$(curl -s "$API_BASE/v1/tasks/$TASK_ID" 2>/dev/null)
+
+if echo "$EXISTING_TASK" | jq -e '.task_id' > /dev/null 2>&1; then
+    TASK_STATUS=$(echo "$EXISTING_TASK" | jq -r '.status')
+    echo "  Found existing task with status: $TASK_STATUS"
+
+    # Check health
+    HEALTH_RESPONSE=$(curl -s "$API_BASE/v1/tasks/$TASK_ID/health" 2>/dev/null)
+    HEALTH_STATUS=$(echo "$HEALTH_RESPONSE" | jq -r '.status // "unknown"')
+
+    if [ "$TASK_STATUS" == "running" ] && [ "$HEALTH_STATUS" == "healthy" ]; then
+        echo -e "${GREEN}✓ Task is already running and healthy${NC}"
+        echo ""
+        echo "=========================================="
+        echo "  Thinker Task Already Ready!"
+        echo "=========================================="
+        echo ""
+        exit 0
+    else
+        echo -e "${YELLOW}⚠ Task exists but is unhealthy (health: $HEALTH_STATUS)${NC}"
+        echo "  Cleaning up old task..."
+
+        DELETE_RESPONSE=$(curl -s -X DELETE "$API_BASE/v1/tasks/$TASK_ID")
+
+        # Check if cleanup succeeded (DELETE returns {"status": "stopped", "task_id": ...})
+        if echo "$DELETE_RESPONSE" | jq -e '.status == "stopped"' > /dev/null 2>&1; then
+            echo -e "${GREEN}✓ Old task cleaned up successfully${NC}"
+        elif echo "$DELETE_RESPONSE" | jq -e '.detail' > /dev/null 2>&1; then
+            # Got an error response
+            ERROR_DETAIL=$(echo "$DELETE_RESPONSE" | jq -r '.detail')
+            echo -e "${RED}✗ Cleanup failed: $ERROR_DETAIL${NC}"
+            echo "  Attempting to continue anyway..."
+        else
+            # Unexpected response format
+            echo -e "${YELLOW}⚠ Unexpected cleanup response (continuing anyway):${NC}"
+            echo "$DELETE_RESPONSE" | jq '.' || echo "$DELETE_RESPONSE"
+        fi
+
+        # Wait for cleanup
+        sleep 3
+    fi
+else
+    echo "  No existing task found"
+fi
+echo ""
+
+# ============================================================================
 # STEP 1: Register Task in Mock Registry
 # ============================================================================
 echo -e "${BLUE}[STEP 1] Registering Thinker Task (DLP $DLP_ID)...${NC}"
