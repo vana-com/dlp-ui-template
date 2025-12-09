@@ -41,9 +41,8 @@ export async function fetchPgePublicKey(): Promise<string> {
   }
 
   try {
-    // Use proxy API route to avoid CORS issues until PGE is rebuilt
-    // TODO: Switch to direct PGE call once CORS is deployed: fetch(`${PGE_URL}/v1/public-key`)
-    const response = await fetch(`/api/pge/public-key`);
+    // Direct call to PGE (CORS is now enabled)
+    const response = await fetch(`${PGE_URL}/v1/public-key`);
     
     if (!response.ok) {
       throw new Error(`Failed to fetch PGE public key: ${response.status} ${response.statusText}`);

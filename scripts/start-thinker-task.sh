@@ -13,10 +13,9 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Configuration
-ORCHESTRATOR_URL="https://vana-runtime-orchestrator-9f7zuwvxe-opendatalabs.vercel.app"
-RUNTIME_ADDRESS="0xa2e19584bc2a4a293841128bb5b309914f67b865"
-API_BASE="$ORCHESTRATOR_URL/api/v1/runtime/$RUNTIME_ADDRESS"
-TASK_ID=1000
+RUNTIME_URL="http://localhost:8000"
+#RUNTIME_URL="https://6db7674377b0b27b55d9433373f6c4472723a763-8000.dstack-prod7.phala.network"
+TASK_ID=999
 DATASET_ID=1
 DLP_ID=186
 
@@ -28,31 +27,107 @@ echo "=========================================="
 echo ""
 
 # ============================================================================
-# Check if orchestrator and runtime are running
+# Detect mode: Direct runtime or via orchestrator
 # ============================================================================
-echo -e "${BLUE}[CHECK] Verifying orchestrator is running...${NC}"
-if ! curl -s "$ORCHESTRATOR_URL" > /dev/null 2>&1; then
-    echo -e "${RED}✗ Orchestrator is not running at $ORCHESTRATOR_URL${NC}"
+if [ -n "$ORCHESTRATOR_URL" ]; then
+    # Orchestrator mode: use API_BASE
+    API_BASE="${API_BASE:-$ORCHESTRATOR_URL/api/v1/runtime/0xa2e19584bc2a4a293841128bb5b309914f67b865}"
+    echo -e "${BLUE}Mode: Via Orchestrator${NC}"
+    echo "  Orchestrator: $ORCHESTRATOR_URL"
+    echo "  API Base: $API_BASE"
     echo ""
-    echo "Please start the orchestrator first:"
-    echo "  cd ../vana-runtime-orchestrator"
-    echo "  npm run dev"
-    echo ""
-    exit 1
-fi
-echo -e "${GREEN}✓ Orchestrator is running${NC}"
 
-echo -e "${BLUE}[CHECK] Verifying Vana Runtime is accessible...${NC}"
-if ! curl -s "$API_BASE/health" > /dev/null; then
-    echo -e "${RED}✗ Runtime not accessible at $API_BASE${NC}"
+    echo -e "${BLUE}[CHECK] Verifying orchestrator is running...${NC}"
+    if ! curl -s "$ORCHESTRATOR_URL" > /dev/null 2>&1; then
+        echo -e "${RED}✗ Orchestrator is not running at $ORCHESTRATOR_URL${NC}"
+        echo ""
+        echo "Please start the orchestrator first:"
+        echo "  cd ../vana-runtime-orchestrator"
+        echo "  npm run dev"
+        echo ""
+        exit 1
+    fi
+    echo -e "${GREEN}✓ Orchestrator is running${NC}"
+
+    echo -e "${BLUE}[CHECK] Verifying Vana Runtime is accessible via orchestrator...${NC}"
+    if ! curl -s "$API_BASE/health" > /dev/null; then
+        echo -e "${RED}✗ Runtime not accessible at $API_BASE${NC}"
+        echo ""
+        echo "Please ensure:"
+        echo "  1. Vana Runtime is running"
+        echo "  2. Runtime is seeded in orchestrator: cd ../vana-runtime-orchestrator && npx tsx scripts/seed-local-runtime.ts"
+        echo ""
+        exit 1
+    fi
+    echo -e "${GREEN}✓ Vana Runtime is accessible via orchestrator${NC}"
+else
+    # Direct mode: use RUNTIME_URL
+    API_BASE="$RUNTIME_URL"
+    echo -e "${BLUE}Mode: Direct to Runtime${NC}"
+    echo "  Runtime URL: $RUNTIME_URL"
     echo ""
-    echo "Please ensure:"
-    echo "  1. Vana Runtime is running: cd ../vana-runtime && docker-compose -f docker-compose.dev.yml up -d"
-    echo "  2. Runtime is seeded in orchestrator: cd ../vana-runtime-orchestrator && npx tsx scripts/seed-local-runtime.ts"
-    echo ""
-    exit 1
+
+    echo -e "${BLUE}[CHECK] Verifying Vana Runtime is accessible...${NC}"
+    if ! curl -s "$RUNTIME_URL/health" > /dev/null; then
+        echo -e "${RED}✗ Runtime not accessible at $RUNTIME_URL${NC}"
+        echo ""
+        echo "Please ensure Vana Runtime is running:"
+        echo "  cd ../vana-runtime && docker-compose -f docker-compose.dev.yml up -d"
+        echo ""
+        exit 1
+    fi
+    echo -e "${GREEN}✓ Vana Runtime is accessible${NC}"
 fi
-echo -e "${GREEN}✓ Vana Runtime is accessible via orchestrator${NC}"
+echo ""
+
+# ============================================================================
+# STEP 0: Check and Clean Up Existing Task
+# ============================================================================
+echo -e "${BLUE}[STEP 0] Checking for existing task...${NC}"
+EXISTING_TASK=$(curl -s "$API_BASE/v1/tasks/$TASK_ID" 2>/dev/null)
+
+if echo "$EXISTING_TASK" | jq -e '.task_id' > /dev/null 2>&1; then
+    TASK_STATUS=$(echo "$EXISTING_TASK" | jq -r '.status')
+    echo "  Found existing task with status: $TASK_STATUS"
+
+    # Check health
+    HEALTH_RESPONSE=$(curl -s "$API_BASE/v1/tasks/$TASK_ID/health" 2>/dev/null)
+    HEALTH_STATUS=$(echo "$HEALTH_RESPONSE" | jq -r '.status // "unknown"')
+
+    if [ "$TASK_STATUS" == "running" ] && [ "$HEALTH_STATUS" == "healthy" ]; then
+        echo -e "${GREEN}✓ Task is already running and healthy${NC}"
+        echo ""
+        echo "=========================================="
+        echo "  Thinker Task Already Ready!"
+        echo "=========================================="
+        echo ""
+        exit 0
+    else
+        echo -e "${YELLOW}⚠ Task exists but is unhealthy (health: $HEALTH_STATUS)${NC}"
+        echo "  Cleaning up old task..."
+
+        DELETE_RESPONSE=$(curl -s -X DELETE "$API_BASE/v1/tasks/$TASK_ID")
+
+        # Check if cleanup succeeded (DELETE returns {"status": "stopped", "task_id": ...})
+        if echo "$DELETE_RESPONSE" | jq -e '.status == "stopped"' > /dev/null 2>&1; then
+            echo -e "${GREEN}✓ Old task cleaned up successfully${NC}"
+        elif echo "$DELETE_RESPONSE" | jq -e '.detail' > /dev/null 2>&1; then
+            # Got an error response
+            ERROR_DETAIL=$(echo "$DELETE_RESPONSE" | jq -r '.detail')
+            echo -e "${RED}✗ Cleanup failed: $ERROR_DETAIL${NC}"
+            echo "  Attempting to continue anyway..."
+        else
+            # Unexpected response format
+            echo -e "${YELLOW}⚠ Unexpected cleanup response (continuing anyway):${NC}"
+            echo "$DELETE_RESPONSE" | jq '.' || echo "$DELETE_RESPONSE"
+        fi
+
+        # Wait for cleanup
+        sleep 3
+    fi
+else
+    echo "  No existing task found"
+fi
 echo ""
 
 # ============================================================================
@@ -76,7 +151,7 @@ REGISTER_RESPONSE=$(curl -s -X POST "$API_BASE/v1/tasks/_mock/register" \
 if echo "$REGISTER_RESPONSE" | jq '.' > /dev/null 2>&1; then
     echo "$REGISTER_RESPONSE" | jq '.'
     echo ""
-    
+
     # Check for errors
     if echo "$REGISTER_RESPONSE" | jq -e '.error' > /dev/null; then
         echo -e "${YELLOW}⚠ Registration may have failed (task might already be registered)${NC}"

@@ -32,7 +32,13 @@ export async function getUserInfo(
   );
 
   if (!response.ok) {
-    throw new Error("Failed to fetch user info");
+    const errorText = await response.text();
+    console.error("Google API error:", {
+      status: response.status,
+      statusText: response.statusText,
+      body: errorText,
+    });
+    throw new Error(`Failed to fetch user info: ${response.status} ${response.statusText} - ${errorText}`);
   }
 
   const data = await response.json();
