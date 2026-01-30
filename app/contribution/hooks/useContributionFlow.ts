@@ -5,7 +5,6 @@ import { useSignMessage } from "wagmi";
 import { ContributionData, DriveInfo, UserInfo } from "../types";
 import { extractFileIdFromReceipt } from "../utils/fileUtils";
 import { useAddFile } from "./useAddFile";
-import { useDataRefinement } from "./useDataRefinement";
 import { useDataUpload } from "./useDataUpload";
 import { useRewardClaim } from "./useRewardClaim";
 import {
@@ -38,15 +37,13 @@ export function useContributionFlow() {
   const { addFile, isAdding, contractError } = useAddFile();
   const { requestContributionProof, isProcessing } = useTeeProof();
   const { requestReward, isClaiming } = useRewardClaim();
-  const { refine, isLoading: isRefining } = useDataRefinement();
 
   const isLoading =
     isUploading ||
     isAdding ||
     isProcessing ||
     isClaiming ||
-    isSigningMessage ||
-    isRefining;
+    isSigningMessage;
 
   const resetFlow = () => {
     setIsSuccess(false);
@@ -262,7 +259,7 @@ export function useContributionFlow() {
 
       // Step 4: Process Proof
       console.log("🔄 Step 4: Processing proof...");
-      await executeProcessProofStep(proofResult, signature);
+      await executeProcessProofStep(proofResult);
       console.log("✅ Process proof step completed");
 
       // Step 5: Claim Reward
@@ -312,10 +309,7 @@ export function useContributionFlow() {
   };
 
   // Step 4: Process Proof
-  const executeProcessProofStep = async (
-    proofResult: ProofResult,
-    signature: string
-  ) => {
+  const executeProcessProofStep = async (proofResult: ProofResult) => {
     console.log("🔄 Setting current step to PROCESS_PROOF");
     setCurrentStep(STEPS.PROCESS_PROOF);
 
@@ -325,27 +319,7 @@ export function useContributionFlow() {
       teeProofData: proofResult.proofData,
     });
 
-    // Call the data refinement process
-    try {
-      console.log("🔄 Starting data refinement...", {
-        file_id: proofResult.fileId,
-        encryption_key: signature ? "present" : "missing",
-      });
-      
-      const refinementResult = await refine({
-        file_id: proofResult.fileId,
-        encryption_key: signature,
-      });
-
-      console.log("✅ Data refinement completed:", refinementResult);
-
-      markStepComplete(STEPS.PROCESS_PROOF);
-
-      return refinementResult;
-    } catch (refineError) {
-      console.error("❌ Error during data refinement:", refineError);
-      throw refineError;
-    }
+    markStepComplete(STEPS.PROCESS_PROOF);
   };
 
   // Step 5: Claim Reward
