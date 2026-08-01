@@ -1,38 +1,22 @@
 import { useState } from "react";
-import { uploadUserData, UploadResponse } from "@/lib/google/googleService";
+import { uploadSpotifyData, SpotifyUploadResponse } from "@/lib/spotify/spotifyService";
 import { useSession } from "next-auth/react";
-import { DriveInfo, UserInfo } from "../types";
+import type { UserInfo } from "../types";
+import type { SpotifyListeningData } from "@/lib/spotify/spotifyApi";
 
-/**
- * Hook for uploading and encrypting data
- */
 export function useDataUpload() {
   const [isUploading, setIsUploading] = useState(false);
-  const { data: session } = useSession();
+  const {} = useSession();
 
-  /**
-   * Upload data to Google Drive
-   */
   const uploadData = async (
     userInfo: UserInfo,
     signature: string,
-    driveInfo?: DriveInfo
-  ): Promise<UploadResponse | null> => {
+    listeningData: SpotifyListeningData
+  ): Promise<SpotifyUploadResponse | null> => {
     setIsUploading(true);
 
     try {
-      if (!session?.accessToken) {
-        throw new Error("No access token available");
-      }
-
-      // Use the Google Service to handle the entire upload process
-      const result = await uploadUserData(
-        userInfo,
-        signature,
-        session.accessToken as string,
-        driveInfo
-      );
-
+      const result = await uploadSpotifyData(userInfo, listeningData, signature);
       return result;
     } finally {
       setIsUploading(false);

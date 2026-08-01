@@ -2,6 +2,7 @@ import { CheckCircle, ExternalLink } from "lucide-react";
 import { ContributionSteps } from "./ContributionSteps";
 import { ContributionSummary } from "./ContributionSummary";
 import { ContributionData, DriveInfo, UserInfo } from "./types";
+import type { SpotifyListeningData } from "@/lib/spotify/spotifyApi";
 import { getTransactionUrl } from "../../contracts/chains";
 
 type ContributionSuccessProps = {
@@ -9,14 +10,14 @@ type ContributionSuccessProps = {
   completedSteps: number[];
   shareUrl?: string;
   userInfo: UserInfo;
-  driveInfo: DriveInfo;
+  listeningData: SpotifyListeningData;
 };
 
 export function ContributionSuccess({
   contributionData,
   completedSteps,
   userInfo,
-  driveInfo,
+  listeningData,
 }: ContributionSuccessProps) {
   // Determine how many steps were completed
   const fullyCompleted = completedSteps.includes(5);
@@ -118,7 +119,7 @@ export function ContributionSuccess({
       {userInfo && (
         <ContributionSummary
           userInfo={userInfo}
-          driveInfo={driveInfo}
+          listeningData={listeningData}
           isEncrypted={true}
         />
       )}

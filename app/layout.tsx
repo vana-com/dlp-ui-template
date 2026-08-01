@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Google Drive Connector",
-  description: "Connect your Google account and view your information",
+  title: "Spotify Connector",
+  description: "Connect your Spotify account and view your information",
 };
 
 export default async function RootLayout({

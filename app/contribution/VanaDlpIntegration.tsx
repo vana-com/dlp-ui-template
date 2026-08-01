@@ -20,14 +20,15 @@ import { ContributionSteps } from "./ContributionSteps";
 import { ContributionSuccess } from "./ContributionSuccess";
 import { ContributionSummary } from "./ContributionSummary";
 import { useContributionFlow } from "./hooks/useContributionFlow";
-import { DriveInfo, UserInfo } from "./types";
+import { UserInfo } from "./types";
+import type { SpotifyListeningData } from "@/lib/spotify/spotifyApi";
 
 /**
  * VanaDlpIntegration component for users to contribute data to VANA's Data Liquidity Pools
  */
 export function VanaDlpIntegration() {
   const { data: session } = useSession();
-  const { userInfo, driveInfo } = useUserData();
+  const { userInfo, listeningData } = useUserData();
 
   // Para connection
   const { isConnected } = useAccount();
@@ -52,15 +53,15 @@ export function VanaDlpIntegration() {
       return;
     }
 
-    if (!userInfo || !driveInfo) {
-      console.log("No userInfo or driveInfo", userInfo, driveInfo);
+    if (!userInfo || !listeningData) {
+      console.log("No userInfo or listeningData", userInfo, listeningData);
       return;
     }
 
     // Reset the flow before starting a new contribution
     resetFlow();
 
-    await handleContributeData(userInfo, driveInfo, isConnected);
+    await handleContributeData(userInfo, listeningData, isConnected);
   };
 
   return (
@@ -68,7 +69,7 @@ export function VanaDlpIntegration() {
       <CardHeader>
         <CardTitle>Contribute to Data Liquidity Pools</CardTitle>
         <CardDescription>
-          Share your Google account data to earn rewards from VANA Data
+          Share your Spotify account data to earn rewards from VANA Data
           Liquidity Pools
         </CardDescription>
       </CardHeader>
@@ -87,7 +88,7 @@ export function VanaDlpIntegration() {
             completedSteps={completedSteps}
             shareUrl={shareUrl}
             userInfo={userInfo as UserInfo}
-            driveInfo={driveInfo as DriveInfo}
+            listeningData={listeningData as SpotifyListeningData}
           />
         ) : (
           <div className="space-y-4">
@@ -103,7 +104,7 @@ export function VanaDlpIntegration() {
             {userInfo && (
               <ContributionSummary
                 userInfo={userInfo as UserInfo}
-                driveInfo={driveInfo as DriveInfo}
+                listeningData={listeningData as SpotifyListeningData}
                 isEncrypted={false}
               />
             )}
@@ -117,7 +118,7 @@ export function VanaDlpIntegration() {
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   {currentStep === 1
-                    ? "Uploading to Google Drive..."
+                    ? "Uploading to Spotify..."
                     : currentStep === 2
                     ? isSigningMessage
                       ? "Signing message..."
@@ -133,7 +134,7 @@ export function VanaDlpIntegration() {
               ) : (
                 <>
                   <Upload className="mr-2 h-4 w-4" />
-                  Contribute Google Data
+                  Contribute Spotify Data
                 </>
               )}
             </Button>
@@ -148,14 +149,14 @@ export function VanaDlpIntegration() {
 
             {!userInfo && (
               <div className="bg-yellow-50 text-yellow-800 p-2 text-xs rounded mt-2">
-                Sign in with Google to contribute your data
+                Sign in with Spotify to contribute your data
               </div>
             )}
           </div>
         )}
       </CardContent>
       <CardFooter className="text-xs text-muted-foreground">
-        Your data is encrypted and securely stored in your Google Drive. You
+        Your data is encrypted and securely stored in your Spotify. You
         maintain control over who can access it.
       </CardFooter>
     </Card>

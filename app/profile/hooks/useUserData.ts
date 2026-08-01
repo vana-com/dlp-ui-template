@@ -1,34 +1,32 @@
 "use client";
 
-import type { GoogleDriveInfo, GoogleUserInfo } from "@/lib/google/googleApi";
+import type { SpotifyListeningData, SpotifyUserInfo } from "@/lib/spotify/spotifyApi";
 import { signOut, useSession } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 export interface UserDataState {
-  userInfo: GoogleUserInfo | null;
-  driveInfo: GoogleDriveInfo | null;
+  userInfo: SpotifyUserInfo | null;
+  listeningData: SpotifyListeningData | null;
   isLoading: boolean;
   error: string | null;
 }
 
 export function useUserData(): UserDataState {
-  const { data: session, status } = useSession();
-
-  const [userInfo, setUserInfo] = useState<GoogleUserInfo | null>(null);
-  const [driveInfo, setDriveInfo] = useState<GoogleDriveInfo | null>(null);
+  const session = useSession();
+  const [userInfo, setUserInfo] = useState<SpotifyUserInfo | null>(null);
+  const [listeningData, setListeningData] = useState<SpotifyListeningData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Track session identity to prevent repeat fetches
   const lastSessionUserRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!session) return;
+    const currentSession = session.data;
+    if (!currentSession) return;
 
-    const userKey = session.user?.email || session.user?.name || "anonymous";
+    const userKey = currentSession.user?.email || currentSession.user?.name || "anonymous";
 
-    // Prevent re-fetch if we already fetched for this user
     if (lastSessionUserRef.current === userKey) return;
 
     lastSessionUserRef.current = userKey;
@@ -38,14 +36,14 @@ export function useUserData(): UserDataState {
       setError(null);
 
       try {
-        const [userInfoResponse, driveInfoResponse] = await Promise.all([
-          fetch("/api/google/user-info"),
-          fetch("/api/google/drive-info"),
+        const [userInfoResponse, listeningResponse] = await Promise.all([
+          fetch("/api/spotify/profile"),
+          fetch("/api/spotify/listening"),
         ]);
 
         if (
           userInfoResponse.status === 401 ||
-          driveInfoResponse.status === 401
+          listeningResponse.status === 401
         ) {
           console.log("Authentication failed, signing out user");
           signOut({ callbackUrl: "/" });
@@ -53,63 +51,45 @@ export function useUserData(): UserDataState {
         }
 
         if (!userInfoResponse.ok) {
-          const errorData = await userInfoResponse
-            .json()
-            .catch(() => ({ error: "Unknown error" }));
+          const errorData = await userInfoResponse.json().catch(() => ({ error: "Unknown error" }));
           console.error("User info error:", errorData);
-          setError("Failed to fetch user information. Please try again later.");
-          toast.error("Failed to fetch user information");
+          setError("Failed to fetch Spotify profile. Please try again later.");
+          toast.error("Failed to fetch Spotify profile");
           return;
         }
 
-        if (!driveInfoResponse.ok) {
-          const errorData = await driveInfoResponse
-            .json()
-            .catch(() => ({ error: "Unknown error" }));
-          console.error("Drive info error:", errorData);
-          setError(
-            "Failed to fetch drive information. Please try again later."
-          );
-          toast.error("Failed to fetch drive information");
+        if (!listeningResponse.ok) {
+          const errorData = await listeningResponse.json().catch(() => ({ error: "Unknown error" }));
+          console.error("Listening data error:", errorData);
+          setError("Failed to fetch Spotify listening data. Please try again later.");
+          toast.error("Failed to fetch listening data");
           return;
         }
 
         const userInfoData = await userInfoResponse.json();
-        // Fallback to browser locale if missing
-        let finalUserInfo = userInfoData;
+        const finalUserInfo = userInfoData;
 
-        if (!userInfoData.locale) {
-          const browserLocale =
-            typeof navigator !== "undefined"
-              ? navigator.language || navigator.languages?.[0] || "en-US"
-              : "en-US";
-
-          finalUserInfo = {
-            ...userInfoData,
-            locale: browserLocale,
-          };
+        if (!finalUserInfo.locale) {
+          finalUserInfo.locale = typeof navigator !== "undefined" ? navigator.language || "en" : "en";
         }
+
         setUserInfo(finalUserInfo);
-
-        const driveInfoData = await driveInfoResponse.json();
-        setDriveInfo(driveInfoData);
-      } catch (err: unknown) {
-        if (err instanceof Error && err.name !== "AbortError") {
-          console.error("Error fetching user data:", err);
-          setError("An unexpected error occurred. Please try again later.");
-          toast.error("Failed to fetch user data");
-        }
+        setListeningData(await listeningResponse.json());
+      } catch (err) {
+        console.error("Error fetching user data:", err);
+        setError("Failed to fetch user data. Please try again later.");
+        toast.error("Failed to fetch user data");
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchUserData();
-  }, [session, status]);
+  }, [session]);
 
   return {
     userInfo,
-    driveInfo,
+    listeningData,
     isLoading,
     error,
   };
