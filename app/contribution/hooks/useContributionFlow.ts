@@ -1,8 +1,9 @@
 import { encryptWithWalletPublicKey } from "@/lib/crypto/utils";
-import { UploadResponse } from "@/lib/google/googleService";
+import type { SpotifyUploadResponse } from "@/lib/spotify/spotifyService";
 import { useState } from "react";
 import { useSignMessage } from "wagmi";
-import { ContributionData, DriveInfo, UserInfo } from "../types";
+import { ContributionData, UserInfo } from "../types";
+import type { SpotifyListeningData } from "@/lib/spotify/spotifyApi";
 import { extractFileIdFromReceipt } from "../utils/fileUtils";
 import { useAddFile } from "./useAddFile";
 import { useDataUpload } from "./useDataUpload";
@@ -56,12 +57,12 @@ export function useContributionFlow() {
 
   const handleContributeData = async (
     userInfo: UserInfo,
-    driveInfo: DriveInfo,
+    listeningData: SpotifyListeningData,
     isConnected: boolean
   ) => {
     console.log("🚀 handleContributeData called with:", {
       userInfo: userInfo ? "present" : "missing",
-      driveInfo: driveInfo ? "present" : "missing",
+      listeningData: listeningData ? "present" : "missing",
       isConnected,
     });
 
@@ -88,7 +89,7 @@ export function useContributionFlow() {
       const uploadResult = await executeUploadDataStep(
         userInfo,
         signature,
-        driveInfo
+        listeningData
       );
       if (!uploadResult) {
         console.error("❌ Upload data step failed");
@@ -115,7 +116,7 @@ export function useContributionFlow() {
       console.log("📊 Updating contribution data with blockchain info...");
       updateContributionData({
         contributionId: uploadResult.vanaFileId,
-        encryptedUrl: uploadResult.downloadUrl,
+        encryptedUrl: uploadResult.encryptedData,
         transactionReceipt: {
           hash: txReceipt.transactionHash,
           blockNumber: txReceipt.blockNumber
@@ -156,11 +157,11 @@ export function useContributionFlow() {
     }
   };
 
-  // Step 1: Upload data to Google Drive
+  // Step 1: Upload data to IPFS via Pinata
   const executeUploadDataStep = async (
     userInfo: UserInfo,
     signature: string,
-    driveInfo: DriveInfo
+    listeningData: SpotifyListeningData
   ) => {
     console.log("☁️ Setting current step to UPLOAD_DATA");
     setCurrentStep(STEPS.UPLOAD_DATA);
@@ -168,28 +169,28 @@ export function useContributionFlow() {
     console.log("☁️ Calling uploadData with:", {
       userInfo: userInfo ? "present" : "missing",
       signature: signature ? "present" : "missing",
-      driveInfo: driveInfo ? "present" : "missing",
+      listeningData: listeningData ? "present" : "missing",
     });
 
-    const uploadResult = await uploadData(userInfo, signature, driveInfo);
+    const uploadResult = await uploadData(userInfo, signature, listeningData);
     
     console.log("☁️ Upload result:", uploadResult);
     
     if (!uploadResult) {
       console.error("❌ Upload failed - no result returned");
-      setError("Failed to upload data to Google Drive");
+      setError("Failed to upload Spotify data");
       return null;
     }
 
-    console.log("☁️ Setting share URL:", uploadResult.downloadUrl);
-    setShareUrl(uploadResult.downloadUrl);
+    console.log("☁️ Setting share URL:", uploadResult.encryptedData);
+    setShareUrl(uploadResult.encryptedData);
     markStepComplete(STEPS.UPLOAD_DATA);
     return uploadResult;
   };
 
   // Step 2: Register on blockchain
   const executeBlockchainRegistrationStep = async (
-    uploadResult: UploadResponse,
+    uploadResult: SpotifyUploadResponse,
     signature: string
   ) => {
     console.log("⛓️ Setting current step to BLOCKCHAIN_REGISTRATION");
@@ -205,11 +206,11 @@ export function useContributionFlow() {
     console.log("🔐 Signature encrypted:", encryptedKey ? "success" : "failed");
 
     console.log("⛓️ Adding file to blockchain...", {
-      downloadUrl: uploadResult.downloadUrl,
+      downloadUrl: uploadResult.encryptedData,
       encryptedKey: encryptedKey ? "present" : "missing",
     });
     // Add the file to blockchain
-    const txReceipt = await addFile(uploadResult.downloadUrl, encryptedKey);
+    const txReceipt = await addFile(uploadResult.encryptedData, encryptedKey);
 
     console.log("⛓️ Transaction receipt:", txReceipt);
 

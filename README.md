@@ -5,8 +5,8 @@ This is a generic UI for uploading data to a Data Liquidity Pool (DLP). This app
 ## How It Works
 
 1. Connect your EVM compatible wallet, which holds some $VANA tokens
-2. Login to your Google Drive or Dropbox for data storage
-3. Drag and drop your data, which is encrypted client-side before being stored in your personal storage
+2. Login to your Spotify for data access
+3. Drag and drop your data, which is encrypted client-side before being stored in IPFS
 4. A transaction is written on-chain, which DLP validators will pick up to verify your file
 5. The Satya Network (using Trusted Execution Environment) validates your contribution
 
@@ -14,7 +14,7 @@ This is a generic UI for uploading data to a Data Liquidity Pool (DLP). This app
 
 - Secure wallet connection with Wagmi and Para
 - Client-side encryption using OpenPGP before any data leaves your browser
-- Integration with Google Drive and Dropbox for personal storage
+- Integration with Spotify API for music listening data
 - On-chain transaction writing using Vana smart contracts
 - TEE-based data validation through the Satya Network
 - Responsive UI built with modern components
@@ -24,7 +24,7 @@ This is a generic UI for uploading data to a Data Liquidity Pool (DLP). This app
 - Node.js (version 16 or newer)
 - Yarn package manager
 - An EVM-compatible wallet with $VANA tokens
-- Google Drive or Dropbox account
+- Spotify account (free or premium)
 
 ## Getting Started
 
@@ -40,6 +40,15 @@ yarn dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the app running.
+
+## Spotify OAuth Setup
+
+To use the Spotify integration, you need to register a Spotify Developer application:
+
+1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+2. Create a new app
+3. Add `http://localhost:3000/api/auth/callback/spotify` as a redirect URI
+4. Copy the Client ID and Client Secret to your `.env` file
 
 ## Client-side encryption
 

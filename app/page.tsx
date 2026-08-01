@@ -50,9 +50,9 @@ export default function Home() {
                 VANA Data Liquidity Pool Demo
               </h2>
               <p className="text-lg text-gray-600 dark:text-gray-400">
-                Sign in with your Google account to contribute your data to the
+                Sign in with your Spotify account to contribute your data to the
                 VANA network. Your data will be encrypted and stored in your
-                Google Drive.
+                Spotify.
               </p>
             </div>
 
@@ -60,9 +60,9 @@ export default function Home() {
               <div className="space-y-2">
                 <h3 className="font-semibold">How it works:</h3>
                 <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                  <li>• Connect your Google account</li>
+                  <li>• Connect your Spotify account</li>
                   <li>• Your data is encrypted client-side</li>
-                  <li>• Encrypted data is stored in your Google Drive</li>
+                  <li>• Encrypted data is stored in your Spotify</li>
                   <li>• A pointer to your data is registered with VANA</li>
                 </ul>
               </div>
@@ -77,7 +77,7 @@ export default function Home() {
 
       <footer className="border-t py-6 text-center text-sm text-gray-500 dark:text-gray-400">
         <div className="container mx-auto px-4">
-          <p>This app demonstrates VANA DLP integration with Google Drive</p>
+          <p>This app demonstrates VANA DLP integration with Spotify</p>
         </div>
       </footer>
     </div>

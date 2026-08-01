@@ -43,7 +43,7 @@ interface ProofRequestBody {
   proof_url: string;
   encryption_seed: string;
   env_vars: {
-    GOOGLE_TOKEN?: string;
+    SPOTIFY_TOKEN?: string;
   };
   validate_permissions: {
     address: string;
@@ -205,8 +205,8 @@ export const useTeeProof = () => {
         proof_url: process.env.NEXT_PUBLIC_PROOF_URL || "",
         encryption_seed: SIGN_MESSAGE,
         env_vars: {
-          // Add the Google token directly from the session
-          GOOGLE_TOKEN: session.accessToken,
+          // Add the Spotify token directly from the session
+          SPOTIFY_TOKEN: session.accessToken,
         },
         validate_permissions: [
           {

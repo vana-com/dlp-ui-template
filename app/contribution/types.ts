@@ -1,8 +1,10 @@
 export type UserInfo = {
-  id?: string;
+  id: string;
   name: string;
   email: string;
   locale?: string;
+  country?: string;
+  product?: string;
 };
 
 export type ContributionData = {
